@@ -3,5 +3,7 @@ mod bridge;
 
 #[tokio::main]
 async fn main() {
-    bridge::create_user().await;
+    let bridges = bridge::find_bridges().await.unwrap();
+    println!("{:?}", bridges);
+    bridge::create_user(bridges).await.unwrap();
 }
