@@ -1,10 +1,12 @@
+use futures::{stream, StreamExt}; // 0.3.8
 use reqwest;
 use reqwest::{Client, Error};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::thread;
-use std::time;
+use std::time::Duration;
+use tokio;
 
 #[derive(Deserialize, Debug)]
 pub struct Bridge {
@@ -35,20 +37,27 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), Error> {
     ips.retain(|ip| ip != "192.168.0.100");
 
     let mut counter = 0;
-    for ip in ips {
-        while counter < 25 {
-            let result = authorize_user_request(&ip).await?;
-            println!("{:?}", result);
-            if let Some(_success) = result[0].get("success") {
-                println!("User created");
-                let username = result[0]["success"]["username"].to_string();
-                let u = User { username };
-            } else {
-                println!("Error: {:?}", result[0]["error"]);
-            }
-            counter += 1;
-            thread::sleep(time::Duration::from_secs(3));
-        }
+    while counter < 15 {
+        let requests = stream::iter(ips.clone())
+            .map(|ip| {
+                tokio::spawn(async move {
+                    let resp = authorize_user_request(&ip).await;
+                    resp
+                })
+            })
+            .buffer_unordered(ips.len());
+
+        let resp = requests
+            .for_each(|b| async {
+                match b {
+                    Ok(Ok(b)) => Ok(b),
+                    Ok(Err(e)) => Err(b),
+                }
+            })
+            .await;
+        println!("result: {:?}", resp);
+        thread::sleep(Duration::from_secs(4));
+        counter += 1
     }
 
     Ok(())
@@ -57,8 +66,6 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), Error> {
 /// Send request to bridge to get User
 pub async fn authorize_user_request(ip: &str) -> Result<serde_json::Value, Error> {
     let address = format!("http://{}/api", ip);
-    println!("{}", address);
-
     let client = Client::new();
     let mut body = HashMap::new();
     body.insert("devicetype", "rue_pc_app");
