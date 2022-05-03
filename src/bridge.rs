@@ -14,9 +14,6 @@ pub struct Bridge {
     id: String,
     internalipaddress: String,
 }
-pub struct User {
-    username: String,
-}
 
 /// find bridges using discovery url
 pub async fn find_bridges() -> Result<Vec<Bridge>, Error> {
@@ -53,8 +50,9 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), Error> {
             .for_each(|b| async {
                 match b {
                     Ok(Ok(b)) => {
-                        tx.send(b).await;
+                        tx.send(b).await; // TODO: Handle result
                     }
+                    // FIXME: Shouldn't print to std
                     Ok(Err(e)) => eprintln!("Got a reqwest::Error: {}", e),
                     Err(e) => println!("Error: {}", e),
                 }
