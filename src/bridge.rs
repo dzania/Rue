@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::thread;
 use std::time::Duration;
 use tokio;
+use tokio::sync::mpsc;
 
 #[derive(Deserialize, Debug)]
 pub struct Bridge {
@@ -38,6 +39,7 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), Error> {
 
     let mut counter = 0;
     while counter < 15 {
+        let (tx, mut rx) = mpsc::channel(32);
         let requests = stream::iter(ips.clone())
             .map(|ip| {
                 tokio::spawn(async move {
@@ -47,15 +49,22 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), Error> {
             })
             .buffer_unordered(ips.len());
 
-        let resp = requests
+        let _resp = requests
             .for_each(|b| async {
                 match b {
-                    Ok(Ok(b)) => Ok(b),
-                    Ok(Err(e)) => Err(b),
+                    Ok(Ok(b)) => {
+                        tx.send(b).await;
+                    }
+                    Ok(Err(e)) => eprintln!("Got a reqwest::Error: {}", e),
+                    Err(e) => println!("Error: {}", e),
                 }
             })
             .await;
-        println!("result: {:?}", resp);
+
+        if let Some(message) = rx.recv().await {
+            println!("message: {:?}", message[0].get("error"));
+            break;
+        }
         thread::sleep(Duration::from_secs(4));
         counter += 1
     }
