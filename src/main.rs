@@ -5,5 +5,5 @@ mod bridge;
 async fn main() {
     let bridges = bridge::find_bridges().await.unwrap();
     println!("{:?}", bridges);
-    bridge::create_user(bridges).await.unwrap();
+    bridge::create_user(bridges).await;
 }

@@ -11,6 +11,7 @@ use tokio::sync::mpsc;
 
 #[derive(Deserialize, Debug)]
 pub struct Bridge {
+    id: String,
     internalipaddress: String,
 }
 
@@ -24,7 +25,7 @@ pub async fn find_bridges() -> Result<Vec<Bridge>, Error> {
 }
 
 /// Send parallel requests to all bridges found
-pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ()> {
+pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), Error> {
     let mut ips: Vec<String> = bridges
         .into_iter()
         .map(|bridge| bridge.internalipaddress)
@@ -34,8 +35,8 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ()> {
     ips.retain(|ip| ip != "192.168.0.100");
 
     let mut counter = 0;
-    while counter < 25 {
-        let (tx, mut rx) = mpsc::channel(4);
+    while counter < 15 {
+        let (tx, mut rx) = mpsc::channel(32);
         let requests = stream::iter(ips.clone())
             .map(|ip| {
                 tokio::spawn(async move {
@@ -59,13 +60,10 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ()> {
             .await;
 
         if let Some(message) = rx.recv().await {
-            match handle_authorize_response(message).await {
-                Ok(()) => break,
-                Err(()) => (),
-            }
+            handle_authorize_response(message).await;
         }
         thread::sleep(Duration::from_secs(4));
-        counter += 1;
+        counter += 1
     }
 
     Ok(())
@@ -86,8 +84,10 @@ pub async fn authorize_user_request(ip: &str) -> Result<serde_json::Value, Error
 pub async fn handle_authorize_response(message: serde_json::Value) -> Result<(), ()> {
     match message[0].get("success") {
         Some(message) => {
-            println!("Bridge created user: {}", message[0]);
-            // TODO: create config file to store data
+            println!(
+                "Bridge created user: {}",
+                message[0].get("success").unwrap()
+            );
             Ok(())
         }
         None => {
