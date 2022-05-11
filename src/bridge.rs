@@ -6,12 +6,29 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::thread;
 use std::time::Duration;
-use tokio;
 use tokio::sync::mpsc;
 
 #[derive(Deserialize, Debug)]
 pub struct Bridge {
     internalipaddress: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct User {
+    username: String,
+}
+
+// TODO: create config methods
+impl User {
+    // TODO: store user credentials method
+    pub async fn store_credentials(self) -> Result<(), ()> {
+        Ok(())
+    }
+}
+
+// TODO: Bridge api errors
+pub enum BridgeError {
+    ButtonNotPressed,
 }
 
 /// find bridges using discovery url
@@ -45,7 +62,7 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ()> {
             })
             .buffer_unordered(ips.len());
 
-        let _resp = requests
+        requests
             .for_each(|b| async {
                 match b {
                     Ok(Ok(b)) => {
@@ -60,8 +77,11 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ()> {
 
         if let Some(message) = rx.recv().await {
             match handle_authorize_response(message).await {
-                Ok(()) => break,
-                Err(()) => (),
+                Ok(user) => {
+                    user.store_credentials().await?;
+                    break;
+                }
+                Err(_) => (),
             }
         }
         thread::sleep(Duration::from_secs(4));
@@ -83,16 +103,18 @@ pub async fn authorize_user_request(ip: &str) -> Result<serde_json::Value, Error
     Ok(value)
 }
 
-pub async fn handle_authorize_response(message: serde_json::Value) -> Result<(), ()> {
+// TODO: Reasonable error
+pub async fn handle_authorize_response(message: serde_json::Value) -> Result<User, BridgeError> {
     match message[0].get("success") {
         Some(message) => {
-            println!("Bridge created user: {}", message[0]);
+            let user: User = serde_json::from_value(message.to_owned()).unwrap();
+            println!("Bridge created user: {:?}", user);
             // TODO: create config file to store data
-            Ok(())
+            Ok(user)
         }
         None => {
             println!("Bridge returned error response: {:?}", message[0]);
-            Err(())
+            Err(BridgeError::ButtonNotPressed)
         }
     }
 }
