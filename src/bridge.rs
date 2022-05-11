@@ -1,11 +1,9 @@
 use futures::{stream, StreamExt};
-use reqwest;
 use reqwest::{Client, Error};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::thread;
-use std::time::Duration;
+use std::{thread, time::Duration};
 use tokio::sync::mpsc;
 
 #[derive(Deserialize, Debug)]
@@ -47,7 +45,7 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ()> {
         .map(|bridge| bridge.internalipaddress)
         .collect();
 
-    // Remove router adress from bridges
+    // Remove router adress from bridges otherwise program freezes
     ips.retain(|ip| ip != "192.168.0.100");
 
     let mut counter = 0;
@@ -66,7 +64,7 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ()> {
             .for_each(|b| async {
                 match b {
                     Ok(Ok(b)) => {
-                        tx.send(b).await; // TODO: Handle result
+                        let _ = tx.send(b).await;
                     }
                     // FIXME: Shouldn't print to std
                     Ok(Err(e)) => eprintln!("Got a reqwest::Error: {}", e),
@@ -76,18 +74,14 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ()> {
             .await;
 
         if let Some(message) = rx.recv().await {
-            match handle_authorize_response(message).await {
-                Ok(user) => {
-                    user.store_credentials().await?;
-                    break;
-                }
-                Err(_) => (),
+            if let Ok(user) = handle_authorize_response(message).await {
+                user.store_credentials().await?;
+                break;
             }
         }
         thread::sleep(Duration::from_secs(4));
         counter += 1;
     }
-
     Ok(())
 }
 
@@ -109,7 +103,6 @@ pub async fn handle_authorize_response(message: serde_json::Value) -> Result<Use
         Some(message) => {
             let user: User = serde_json::from_value(message.to_owned()).unwrap();
             println!("Bridge created user: {:?}", user);
-            // TODO: create config file to store data
             Ok(user)
         }
         None => {
