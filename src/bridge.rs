@@ -1,3 +1,4 @@
+use crate::config::User;
 use futures::{stream, StreamExt};
 use reqwest::{Client, Error};
 use serde::Deserialize;
@@ -10,20 +11,6 @@ use tokio::sync::mpsc;
 pub struct Bridge {
     internalipaddress: String,
 }
-
-#[derive(Deserialize, Debug)]
-pub struct User {
-    username: String,
-}
-
-// TODO: create config methods
-impl User {
-    // TODO: store user credentials method
-    pub async fn store_credentials(self) -> Result<(), ()> {
-        Ok(())
-    }
-}
-
 // TODO: Bridge api errors
 pub enum BridgeError {
     ButtonNotPressed,
@@ -75,7 +62,7 @@ pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ()> {
 
         if let Some(message) = rx.recv().await {
             if let Ok(user) = handle_authorize_response(message).await {
-                user.store_credentials().await?;
+                user.save().await?;
                 break;
             }
         }
