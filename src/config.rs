@@ -12,7 +12,8 @@ enum ConfigError {
     CreateFileError(std::io::Error),
     ReadError,
     HomeDirectoryNotFound,
-    SerializationError(serde_json::Error),
+    SerializeError(serde_json::Error),
+    DeserializeError(serde_json::Error),
 }
 
 const PATH: Option<std::path::PathBuf> = dirs::home_dir();
@@ -25,7 +26,7 @@ impl User {
                 .join(".config/rue.conf"),
         )
         .map_err(|e| ConfigError::CreateFileError(e))?;
-        let data = serde_json::to_string(self).map_err(|e| ConfigError::SerializationError(e))?;
+        let data = serde_json::to_string(self).map_err(|e| ConfigError::SerializeError(e))?;
         file.write_all(data.as_bytes())
             .map_err(|e| ConfigError::CreateFileError(e))?;
 
@@ -33,7 +34,16 @@ impl User {
     }
 
     // Load username(token) used for api calls
-    pub async fn load() -> Result<(), ()> {
-        Ok(())
+    pub async fn load() -> Result<Self, ConfigError> {
+        let username = fs::read_to_string(
+            PATH.ok_or(ConfigError::HomeDirectoryNotFound)?
+                .join(".config/rue.conf"),
+        )
+        .map_err(|_| ConfigError::ReadError)?;
+        let user = User {
+            username: serde_json::from_str(&username)
+                .map_err(|e| ConfigError::SerializeError(e))?,
+        };
+        Ok(user)
     }
 }
