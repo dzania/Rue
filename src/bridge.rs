@@ -11,9 +11,11 @@ use tokio::sync::mpsc;
 pub struct Bridge {
     internalipaddress: String,
 }
-// TODO: Bridge api errors
-pub enum BridgeError {
+
+pub enum BridgeErrors {
     ButtonNotPressed,
+    //NoBridgesFound(String),
+    //BridgeDiscoveryFailed(reqwest::Error),
 }
 
 /// find bridges using discovery url
@@ -22,18 +24,21 @@ pub async fn find_bridges() -> Result<Vec<Bridge>, Error> {
         .await?
         .json()
         .await?;
+    if request.len() == 0 {
+        panic!("No bridges found");
+    }
     Ok(request)
 }
 
 /// Send parallel requests to all bridges found
-pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ConfigError> {
-    let mut ips: Vec<String> = bridges
+pub async fn create_user() -> Result<(), ConfigError> {
+    let ips: Vec<String> = find_bridges()
+        .await
+        .expect("No bridges found")
         .into_iter()
         .map(|bridge| bridge.internalipaddress)
+        .filter(|ip| ip == "192.168.0.100")
         .collect();
-
-    // Remove router adress from bridges otherwise program freezes
-    ips.retain(|ip| ip != "192.168.0.100");
 
     let mut counter = 0;
     while counter < 25 {
@@ -85,7 +90,7 @@ pub async fn authorize_user_request(ip: &str) -> Result<serde_json::Value, Error
 }
 
 // TODO: Reasonable error
-pub async fn handle_authorize_response(message: serde_json::Value) -> Result<User, BridgeError> {
+pub async fn handle_authorize_response(message: serde_json::Value) -> Result<User, BridgeErrors> {
     match message[0].get("success") {
         Some(message) => {
             let user: User = serde_json::from_value(message.to_owned()).unwrap();
@@ -94,7 +99,7 @@ pub async fn handle_authorize_response(message: serde_json::Value) -> Result<Use
         }
         None => {
             println!("Bridge returned error response: {:?}", message[0]);
-            Err(BridgeError::ButtonNotPressed)
+            Err(BridgeErrors::ButtonNotPressed)
         }
     }
 }

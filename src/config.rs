@@ -10,7 +10,7 @@ pub struct User {
 
 pub enum ConfigError {
     CreateFileError(std::io::Error),
-    FileReadError,
+    FileReadError(std::io::Error),
     HomeDirectoryNotFound,
     SerializeError(serde_json::Error),
     DeserializeError(serde_json::Error),
@@ -39,7 +39,7 @@ impl User {
                 .ok_or(ConfigError::HomeDirectoryNotFound)?
                 .join(".config/rue.conf"),
         )
-        .map_err(|_| ConfigError::FileReadError)?;
+        .map_err(|e| ConfigError::FileReadError(e))?;
         let user = User {
             username: serde_json::from_str(&username)
                 .map_err(|e| ConfigError::DeserializeError(e))?,

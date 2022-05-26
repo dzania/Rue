@@ -1,9 +1,15 @@
 mod bridge;
 mod config;
+use std::path::Path;
 
 #[tokio::main]
 async fn main() {
-    let bridges = bridge::find_bridges().await.unwrap();
-    println!("{:?}", bridges);
-    bridge::create_user(bridges).await;
+    match Path::new(&dirs::home_dir().unwrap().join(".config/rue/rue.conf")).exists() {
+        true => {
+            println!("Config file exists");
+        }
+        false => {
+            bridge::create_user().await;
+        }
+    }
 }
