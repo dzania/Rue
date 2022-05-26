@@ -1,5 +1,6 @@
 mod bridge;
 mod config;
+mod errors;
 use std::path::Path;
 
 #[tokio::main]

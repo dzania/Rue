@@ -20,11 +20,12 @@ pub enum BridgeErrors {
 
 /// find bridges using discovery url
 pub async fn find_bridges() -> Result<Vec<Bridge>, Error> {
+    println!("Searching for bridges");
     let request: Vec<Bridge> = reqwest::get("https://discovery.meethue.com/")
         .await?
         .json()
         .await?;
-    if request.len() == 0 {
+    if request.is_empty() {
         panic!("No bridges found");
     }
     Ok(request)
@@ -40,8 +41,10 @@ pub async fn create_user() -> Result<(), ConfigError> {
         .filter(|ip| ip == "192.168.0.100")
         .collect();
 
+    println!("Bridge found waiting for button press");
     let mut counter = 0;
     while counter < 25 {
+        println!("counter: {}", counter);
         let (tx, mut rx) = mpsc::channel(4);
         let requests = stream::iter(ips.clone())
             .map(|ip| {
@@ -56,6 +59,7 @@ pub async fn create_user() -> Result<(), ConfigError> {
             .for_each(|b| async {
                 match b {
                     Ok(Ok(b)) => {
+                        println!("Received response: {}", b);
                         let _ = tx.send(b).await;
                     }
                     // FIXME: Shouldn't print to std
@@ -67,6 +71,7 @@ pub async fn create_user() -> Result<(), ConfigError> {
 
         if let Some(message) = rx.recv().await {
             if let Ok(user) = handle_authorize_response(message).await {
+                println!("Button pressed saving user to file");
                 user.save().await?;
                 break;
             }
@@ -86,6 +91,7 @@ pub async fn authorize_user_request(ip: &str) -> Result<serde_json::Value, Error
     let resp = client.post(&address).json(&body).send().await?;
     let data = resp.text().await?;
     let value: Value = serde_json::from_str(&data).unwrap();
+    println!("Value: {}", value);
     Ok(value)
 }
 
