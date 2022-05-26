@@ -1,4 +1,4 @@
-use crate::config::{ConfigError, User};
+use crate::{config::User, errors::ConfigError};
 use futures::{stream, StreamExt};
 use reqwest::{Client, Error};
 use serde::Deserialize;
