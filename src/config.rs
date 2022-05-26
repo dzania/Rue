@@ -8,21 +8,20 @@ pub struct User {
     username: String,
 }
 
-enum ConfigError {
+pub enum ConfigError {
     CreateFileError(std::io::Error),
-    ReadError,
+    FileReadError,
     HomeDirectoryNotFound,
     SerializeError(serde_json::Error),
     DeserializeError(serde_json::Error),
 }
 
-const PATH: Option<std::path::PathBuf> = dirs::home_dir();
-
 impl User {
     // Store username(token) used for api calls
     pub async fn save(&self) -> Result<(), ConfigError> {
         let mut file = fs::File::create(
-            PATH.ok_or(ConfigError::HomeDirectoryNotFound)?
+            dirs::home_dir()
+                .ok_or(ConfigError::HomeDirectoryNotFound)?
                 .join(".config/rue.conf"),
         )
         .map_err(|e| ConfigError::CreateFileError(e))?;
@@ -36,13 +35,14 @@ impl User {
     // Load username(token) used for api calls
     pub async fn load() -> Result<Self, ConfigError> {
         let username = fs::read_to_string(
-            PATH.ok_or(ConfigError::HomeDirectoryNotFound)?
+            dirs::home_dir()
+                .ok_or(ConfigError::HomeDirectoryNotFound)?
                 .join(".config/rue.conf"),
         )
-        .map_err(|_| ConfigError::ReadError)?;
+        .map_err(|_| ConfigError::FileReadError)?;
         let user = User {
             username: serde_json::from_str(&username)
-                .map_err(|e| ConfigError::SerializeError(e))?,
+                .map_err(|e| ConfigError::DeserializeError(e))?,
         };
         Ok(user)
     }

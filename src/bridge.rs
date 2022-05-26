@@ -1,4 +1,4 @@
-use crate::config::User;
+use crate::config::{ConfigError, User};
 use futures::{stream, StreamExt};
 use reqwest::{Client, Error};
 use serde::Deserialize;
@@ -26,7 +26,7 @@ pub async fn find_bridges() -> Result<Vec<Bridge>, Error> {
 }
 
 /// Send parallel requests to all bridges found
-pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ()> {
+pub async fn create_user(bridges: Vec<Bridge>) -> Result<(), ConfigError> {
     let mut ips: Vec<String> = bridges
         .into_iter()
         .map(|bridge| bridge.internalipaddress)
