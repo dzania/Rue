@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Write;
 
+static FILE_PATH: &str = ".config/rue/rue.conf";
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
     username: String,
@@ -15,7 +17,7 @@ impl User {
                 .ok_or(ConfigError::HomeDirectoryNotFound(
                     "Can't find home directory".into(),
                 ))?
-                .join(".config/rue.conf"),
+                .join(FILE_PATH),
         )
         .map_err(|e| ConfigError::CreateFileError(e.to_string()))?;
         let data =
@@ -33,7 +35,7 @@ impl User {
                 .ok_or(ConfigError::HomeDirectoryNotFound(
                     "Can't find home directory".into(),
                 ))?
-                .join(".config/rue.conf"),
+                .join(FILE_PATH),
         )
         .map_err(|e| ConfigError::FileReadError(e.to_string()))?;
         let user = User {
