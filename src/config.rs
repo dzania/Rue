@@ -1,13 +1,9 @@
 use crate::errors::ConfigError;
 use serde::{Deserialize, Serialize};
-use std::{
-    fs,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{fs, io::Write, path::Path};
 
 static FILE_PATH: &str = ".config/rue";
-static CONFIG_NAME: &str = "rue.conf";
+static CONFIG_FILE_NAME: &str = "rue.conf";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
@@ -26,9 +22,9 @@ impl User {
     // Store username(token) used for api calls
     pub async fn save(&self) -> Result<(), ConfigError> {
         self.create_path()?;
-        let mut file = fs::File::create(format!("{}/{}", FILE_PATH, CONFIG_NAME))
+        let mut file = fs::File::create(format!("{}/{}", FILE_PATH, CONFIG_FILE_NAME))
             .map_err(|e| ConfigError::CreateFileError(e.to_string()))?;
-        file.write_all(&self.username.as_bytes())
+        file.write_all(self.username.as_bytes())
             .map_err(|e| ConfigError::CreateFileError(e.to_string()))?;
 
         Ok(())
@@ -41,7 +37,7 @@ impl User {
                 .ok_or(ConfigError::HomeDirectoryNotFound(
                     "Can't find home directory".into(),
                 ))?
-                .join(FILE_PATH),
+                .join(format!("{}/{}", FILE_PATH, CONFIG_FILE_NAME)),
         )
         .map_err(|e| ConfigError::FileReadError(e.to_string()))?;
         let user = User { username };
