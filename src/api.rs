@@ -1,3 +1,4 @@
+use reqwest;
 use crate::config::User;
 
 pub struct Api {
