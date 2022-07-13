@@ -11,7 +11,7 @@ async fn main() {
             println!("Config file exists");
         }
         false => {
-            bridge::create_user().await;
+            bridge::create_user().await.unwrap();
         }
     }
 }
