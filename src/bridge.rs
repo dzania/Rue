@@ -14,8 +14,6 @@ pub struct Bridge {
 
 pub enum BridgeErrors {
     ButtonNotPressed,
-    //NoBridgesFound(String),
-    //BridgeDiscoveryFailed(reqwest::Error),
 }
 
 /// find bridges using discovery url
@@ -38,7 +36,6 @@ pub async fn create_user() -> Result<(), ConfigError> {
         .expect("No bridges found")
         .into_iter()
         .map(|bridge| bridge.internalipaddress)
-        .filter(|ip| ip != "192.168.0.100")
         .collect();
 
     info!("Bridges found press link button on your bridge...");
