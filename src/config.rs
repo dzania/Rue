@@ -16,9 +16,9 @@ pub struct User {
 
 impl User {
     fn get_home_dir() -> Result<PathBuf, ConfigError> {
-        let home_dir = dirs::home_dir().ok_or(ConfigError::HomeDirectoryNotFound(
-            "Can't find home directory".into(),
-        ))?;
+        let home_dir = dirs::home_dir().ok_or_else(|| {
+            ConfigError::HomeDirectoryNotFound("Can't find home directory".into())
+        })?;
         Ok(home_dir)
     }
 
@@ -37,7 +37,7 @@ impl User {
             home_dir.join(FILE_PATH).join(CONFIG_NAME),
         )
         .map_err(|e| ConfigError::CreateFileError(e.to_string()))?;
-        file.write_all(&self.username.as_bytes())
+        file.write_all(self.username.as_bytes())
             .map_err(|e| ConfigError::CreateFileError(e.to_string()))?;
         println!("User saved");
 

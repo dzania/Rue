@@ -14,11 +14,12 @@ pub struct Bridge {
 
 pub enum BridgeErrors {
     ButtonNotPressed,
+    #[allow(dead_code)]
+    NoBridgesFound,
 }
 
 /// find bridges using discovery url
 pub async fn find_bridges() -> Result<Vec<Bridge>, Error> {
-    debug!("Searching bridges..");
     let request: Vec<Bridge> = reqwest::get("https://discovery.meethue.com/")
         .await?
         .json()
@@ -38,7 +39,6 @@ pub async fn create_user() -> Result<(), ConfigError> {
         .map(|bridge| bridge.internalipaddress)
         .collect();
 
-    info!("Bridges found press link button on your bridge...");
     let mut counter = 0;
     while counter < 25 {
         let (tx, mut rx) = mpsc::channel(4);
@@ -55,19 +55,17 @@ pub async fn create_user() -> Result<(), ConfigError> {
             .for_each(|b| async {
                 match b {
                     Ok(Ok(b)) => {
-                        debug!("Received response: {}", b);
                         let _ = tx.send(b).await;
                     }
                     // FIXME: Shouldn't print to std
-                    Ok(Err(e)) => error!("Got a reqwest::Error: {}", e),
-                    Err(e) => error!("Error: {}", e),
+                    Ok(Err(e)) => println!("Got a reqwest::Error: {}", e),
+                    Err(e) => println!("Error: {}", e),
                 }
             })
             .await;
 
         if let Some(message) = rx.recv().await {
             if let Ok(user) = handle_authorize_response(message).await {
-                debug!("Button pressed saving user to file");
                 user.save().await?;
                 break;
             }
