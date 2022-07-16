@@ -2,7 +2,7 @@ use std::fmt;
 
 pub enum ConfigError {
     CreateFileError(String),
-    #[allow[dead_code)]
+    #[allow(dead_code)]
     FileReadError(String),
     HomeDirectoryNotFound(String),
 }
