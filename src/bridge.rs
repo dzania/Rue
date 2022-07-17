@@ -19,7 +19,7 @@ pub enum BridgeErrors {
 }
 
 impl Bridge {
-    /// find bridges using discovery url
+    // find bridges using discovery url
     pub async fn find_bridges() -> Result<Vec<Self>, Error> {
         let request: Vec<Bridge> = reqwest::get("https://discovery.meethue.com/")
             .await?
@@ -31,7 +31,7 @@ impl Bridge {
         Ok(request)
     }
 
-    /// Send parallel requests to all bridges found
+    // Send parallel requests to all bridges found
     pub async fn create_user() -> Result<(), ConfigError> {
         let ips: Vec<String> = Bridge::find_bridges()
             .await
@@ -40,8 +40,8 @@ impl Bridge {
             .map(|bridge| bridge.internalipaddress)
             .collect();
 
-        let mut counter = 0;
-        while counter < 25 {
+        // Poll bridge for minute
+        for _ in 1..25 {
             let (tx, mut rx) = mpsc::channel(4);
             let requests = stream::iter(ips.clone())
                 .map(|ip| {
@@ -72,7 +72,6 @@ impl Bridge {
                 }
             }
             thread::sleep(Duration::from_secs(4));
-            counter += 1;
         }
         Ok(())
     }
