@@ -33,7 +33,7 @@ impl User {
         self.create_path()?;
         let home_dir = User::get_home_dir()?;
         let mut file = fs::File::create(
-            // FIXME: DRY try to remove it and get home dir as const
+            // FIXME: remove repetitons
             home_dir.join(FILE_PATH).join(CONFIG_NAME),
         )
         .map_err(|e| ConfigError::CreateFileError(e.to_string()))?;
