@@ -2,6 +2,7 @@ pub mod api;
 pub mod bridge;
 pub mod config;
 pub mod errors;
+pub mod events;
 pub mod lights;
 
 use crossterm::{
