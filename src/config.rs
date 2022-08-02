@@ -32,18 +32,13 @@ impl User {
     pub async fn save(&self) -> Result<(), ConfigError> {
         self.create_path()?;
         let home_dir = User::get_home_dir()?;
-        let mut file = fs::File::create(
-            // FIXME: remove repetitons
-            home_dir.join(FILE_PATH).join(CONFIG_NAME),
-        )
-        .map_err(|e| ConfigError::CreateFileError(e.to_string()))?;
+        let mut file = fs::File::create(home_dir.join(FILE_PATH).join(CONFIG_NAME))
+            .map_err(|e| ConfigError::CreateFileError(e.to_string()))?;
         file.write_all(self.username.as_bytes())
             .map_err(|e| ConfigError::CreateFileError(e.to_string()))?;
         println!("User saved");
-
         Ok(())
     }
-
     // Load username(token) used for api calls
     pub async fn load() -> Result<Self, ConfigError> {
         let username = fs::read_to_string(User::get_home_dir()?.join(FILE_PATH))
