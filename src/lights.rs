@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 pub struct LightState {
     pub on: bool,
     pub bri: u8,

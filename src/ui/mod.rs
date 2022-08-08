@@ -9,10 +9,10 @@ use crossterm::{
 use std::io;
 use tui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Alignment },
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, Cell, Tabs, Widget},
+    widgets::{Block, Borders, Cell, Tabs, Widget, Paragraph, BorderType},
     Terminal,
 };
 
@@ -40,6 +40,21 @@ pub fn render_lights() -> Result<(), io::Error> {
 pub fn render_rooms() -> Result<(), io::Error> {
     todo!()
 }
+pub fn render_help() -> Result<(), io::Error> {
+    todo!()
+}
+fn draw_title<'a>() -> Paragraph<'a> {
+    Paragraph::new("Rue")
+        .style(Style::default().fg(Color::LightCyan))
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .style(Style::default().fg(Color::White))
+                .border_type(BorderType::Plain),
+        )
+}
+
 pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<(), io::Error> {
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
@@ -85,6 +100,8 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<(), io::Error> {
                 KeyCode::Char('q') => break,
                 KeyCode::Right => app.next(),
                 KeyCode::Left => app.previous(),
+                KeyCode::Char('h') => app.previou(),
+                KeyCode::Char('l') => app.previou(),
                 _ => {}
             }
         }
