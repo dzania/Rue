@@ -1,9 +1,10 @@
 use rue::bridge::Bridge;
+use rue::config::User;
 use std::path::Path;
 
 #[tokio::main]
 async fn main() {
-    match Path::new(&dirs::home_dir().unwrap().join(".config/rue/rue.conf")).exists() {
+    match User::exists() {
         true => {
             println!("authorized");
         }

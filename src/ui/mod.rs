@@ -1,4 +1,3 @@
-pub mod events;
 use crate::App;
 
 use crossterm::{

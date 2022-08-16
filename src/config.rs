@@ -21,6 +21,9 @@ impl User {
         })?;
         Ok(home_dir)
     }
+    pub fn exists() -> bool {
+        Path::new(&dirs::home_dir().unwrap().join(".config/rue/rue.conf")).exists()
+    }
 
     pub fn create_path(&self) -> Result<(), ConfigError> {
         let home_dir = User::get_home_dir()?;
