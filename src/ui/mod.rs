@@ -1,47 +1,87 @@
 use crate::App;
 
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    event::{self, Event, KeyCode},
+    terminal::{disable_raw_mode, enable_raw_mode},
 };
 use std::io;
 use tui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout, Alignment },
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, Cell, Tabs, Widget, Paragraph, BorderType},
+    widgets::{Block, BorderType, Borders, Paragraph, Tabs},
     Terminal,
 };
 
 use std::sync::{Arc, Mutex};
 
-pub struct Menu {Vec}
-
-enum MenuItem {
-    Lights,
-    Groups,
-    Rooms,
+pub struct TabsState {
+    pub titles: Vec<String>,
+    pub index: usize,
 }
 
-pub fn draw_nav() -> Result<(), io::Error> {
+// Handle tabs
+impl TabsState {
+    pub fn new() -> Self {
+        TabsState {
+            titles: vec!["Rooms".into(), "Lights".into(), "Groups".into()],
+            index: 0,
+        }
+    }
+    pub fn next(&mut self) {
+        self.index = (self.index + 1) % self.titles.len();
+    }
+
+    pub fn previous(&mut self) {
+        if self.index > 0 {
+            self.index -= 1;
+        } else {
+            self.index = self.titles.len() - 1;
+        }
+    }
+}
+
+pub fn draw_tabs(app: &App) -> Result<Tabs, io::Error> {
+    let tabs = app
+        .tabstate
+        .titles
+        .into_iter()
+        .map(|t| {
+            Spans::from(vec![Span::styled(
+                t,
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::UNDERLINED),
+            )])
+        })
+        .collect();
+    Ok(Tabs::new(tabs)
+        .block(Block::default().borders(Borders::ALL).title("Tabs"))
+        .select(app.tabstate.index)
+        .style(Style::default().fg(Color::Cyan))
+        .highlight_style(
+            Style::default()
+                .add_modifier(Modifier::BOLD)
+                .bg(Color::Black),
+        ))
+}
+
+pub fn draw_groups() -> Result<(), io::Error> {
+    todo!()
+}
+pub fn draw_lights() -> Result<(), io::Error> {
     todo!()
 }
 
-pub fn render_groups() -> Result<(), io::Error> {
+pub fn draw_rooms() -> Result<(), io::Error> {
     todo!()
 }
-pub fn render_lights() -> Result<(), io::Error> {
+pub fn draw_help() -> Result<(), io::Error> {
     todo!()
 }
 
-pub fn render_rooms() -> Result<(), io::Error> {
-    todo!()
-}
-pub fn render_help() -> Result<(), io::Error> {
-    todo!()
-}
+// Draw app title
 fn draw_title<'a>() -> Paragraph<'a> {
     Paragraph::new("Rue")
         .style(Style::default().fg(Color::LightCyan))
@@ -97,10 +137,10 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<(), io::Error> {
         if let Event::Key(key) = event::read()? {
             match key.code {
                 KeyCode::Char('q') => break,
-                KeyCode::Right => app.next(),
-                KeyCode::Left => app.previous(),
-                KeyCode::Char('h') => app.previou(),
-                KeyCode::Char('l') => app.previou(),
+                //KeyCode::Right => app.tabstate.next(),
+                //KeyCode::Char('l') => app.tabstate.next(),
+                //KeyCode::Left => app.tabstate.previous(),
+                //KeyCode::Char('h') => app.tabstate.previous(),
                 _ => {}
             }
         }

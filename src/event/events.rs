@@ -1,7 +1,10 @@
 use crossterm::event::KeyCode;
 use std::thread;
 use std::time::Duration;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::{
+    mpsc,
+    mpsc::{UnboundedReceiver, UnboundedSender},
+};
 
 /// Main event handler to communicate between
 /// input handler and rendering loop
@@ -18,7 +21,7 @@ impl Events {
             loop {
                 // poll for tick rate duration, if no event, sent tick event.
                 if crossterm::event::poll(tick_rate).unwrap() {
-                    if let IoEvent::Key(key) = event::read().unwrap() {
+                    if let IoEvent::Input(key) = events::read().unwrap() {
                         let key = Key::from(key);
                         event_tx.send(IoEvent::Input(key)).unwrap();
                     }
