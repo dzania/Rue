@@ -1,14 +1,9 @@
-use rue::{bridge::Bridge, start_ui};
-use std::path::Path;
+mod ui;
+use rue::App;
+use std::sync::{Arc, Mutex};
 
 #[tokio::main]
 async fn main() {
-    match Path::new(&dirs::home_dir().unwrap().join(".config/rue/rue.conf")).exists() {
-        true => {
-            start_ui();
-        }
-        false => {
-            Bridge::create_user().await.unwrap();
-        }
-    }
+    let app = Arc::new(Mutex::new(App::new()));
+    ui::start_ui(&app).await.unwrap();
 }

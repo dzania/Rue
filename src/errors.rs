@@ -7,7 +7,7 @@ pub enum ConfigError {
 }
 impl fmt::Debug for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &*self {
+        match self {
             ConfigError::CreateFileError(msg) => write!(f, "Create file error: {}", msg),
             ConfigError::FileReadError(msg) => write!(f, "Create config error: {}", msg),
             ConfigError::HomeDirectoryNotFound(msg) => {
