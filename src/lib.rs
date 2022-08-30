@@ -10,15 +10,15 @@ pub mod lights;
 pub mod ui;
 
 pub struct App {
-    user: Option<User>,
-    tabstate: TabsState,
+    pub user: Option<User>,
+    pub tabstate: TabsState,
 }
 
 impl App {
-    pub async fn new() -> Self {
-        let user = match User::load().await {
+    pub fn new() -> Self {
+        let user = match User::load() {
             Ok(user) => Some(user),
-            Err(e) => None,
+            Err(_) => None,
         };
 
         App {

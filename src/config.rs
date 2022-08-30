@@ -43,7 +43,7 @@ impl User {
         Ok(())
     }
     // Load username(token) used for api calls
-    pub async fn load() -> Result<Self, ConfigError> {
+    pub fn load() -> Result<Self, ConfigError> {
         let username = fs::read_to_string(User::get_home_dir()?.join(FILE_PATH))
             .map_err(|e| ConfigError::FileReadError(e.to_string()))?;
         let user = User { username };

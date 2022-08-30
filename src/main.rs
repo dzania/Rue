@@ -1,15 +1,9 @@
-use rue::bridge::Bridge;
-use rue::config::User;
-use std::path::Path;
+mod ui;
+use rue::App;
+use std::sync::{Arc, Mutex};
 
 #[tokio::main]
 async fn main() {
-    match User::exists() {
-        true => {
-            println!("authorized");
-        }
-        false => {
-            Bridge::create_user().await.unwrap();
-        }
-    }
+    let app = Arc::new(Mutex::new(App::new()));
+    ui::start_ui(&app).await.unwrap();
 }

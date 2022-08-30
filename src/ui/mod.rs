@@ -46,7 +46,7 @@ pub fn draw_tabs(app: &App) -> Result<Tabs, io::Error> {
     let tabs = app
         .tabstate
         .titles
-        .into_iter()
+        .iter()
         .map(|t| {
             Spans::from(vec![Span::styled(
                 t,
@@ -135,12 +135,13 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<(), io::Error> {
             f.render_widget(tabs, chunks[0]);
         })?;
         if let Event::Key(key) = event::read()? {
+            let mut app_state = app.lock().unwrap();
             match key.code {
                 KeyCode::Char('q') => break,
-                //KeyCode::Right => app.tabstate.next(),
-                //KeyCode::Char('l') => app.tabstate.next(),
-                //KeyCode::Left => app.tabstate.previous(),
-                //KeyCode::Char('h') => app.tabstate.previous(),
+                KeyCode::Right => app_state.tabstate.next(),
+                KeyCode::Char('l') => app_state.tabstate.next(),
+                KeyCode::Left => app_state.tabstate.previous(),
+                KeyCode::Char('h') => app_state.tabstate.previous(),
                 _ => {}
             }
         }
