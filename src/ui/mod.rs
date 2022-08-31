@@ -31,6 +31,7 @@ impl TabsState {
                 "Groups".into(),
                 "Help".into(),
             ],
+
             index: 0,
         }
     }
@@ -63,6 +64,7 @@ pub fn draw_tabs(app: &App) -> Result<Tabs, io::Error> {
         .collect();
     Ok(Tabs::new(tabs)
         .block(Block::default().borders(Borders::ALL).title("Menu"))
+
         .select(app.tabstate.index)
         .style(Style::default().fg(Color::Cyan))
         .highlight_style(
@@ -92,7 +94,7 @@ pub fn draw_help() -> Result<(), io::Error> {
     todo!()
 }
 
-// Draw app title
+/// Draw app title
 fn draw_title<'a>() -> Paragraph<'a> {
     Paragraph::new("Rue")
         .style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
