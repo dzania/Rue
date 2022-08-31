@@ -25,7 +25,12 @@ pub struct TabsState {
 impl TabsState {
     pub fn new() -> Self {
         TabsState {
-            titles: vec!["Rooms".into(), "Lights".into(), "Groups".into()],
+            titles: vec![
+                "Rooms".into(),
+                "Lights".into(),
+                "Groups".into(),
+                "Help".into(),
+            ],
             index: 0,
         }
     }
@@ -57,26 +62,32 @@ pub fn draw_tabs(app: &App) -> Result<Tabs, io::Error> {
         })
         .collect();
     Ok(Tabs::new(tabs)
-        .block(Block::default().borders(Borders::ALL).title("Tabs"))
+        .block(Block::default().borders(Borders::ALL).title("Menu"))
         .select(app.tabstate.index)
         .style(Style::default().fg(Color::Cyan))
         .highlight_style(
             Style::default()
+                .fg(Color::LightGreen)
                 .add_modifier(Modifier::BOLD)
                 .bg(Color::Black),
         ))
 }
 
+/// Draw groups page
 pub fn draw_groups() -> Result<(), io::Error> {
     todo!()
 }
+
+/// Draw lights page
 pub fn draw_lights() -> Result<(), io::Error> {
     todo!()
 }
 
+/// Draw rooms page
 pub fn draw_rooms() -> Result<(), io::Error> {
     todo!()
 }
+/// Draw help page
 pub fn draw_help() -> Result<(), io::Error> {
     todo!()
 }
@@ -84,14 +95,9 @@ pub fn draw_help() -> Result<(), io::Error> {
 // Draw app title
 fn draw_title<'a>() -> Paragraph<'a> {
     Paragraph::new("Rue")
-        .style(Style::default().fg(Color::LightCyan))
+        .style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
         .alignment(Alignment::Center)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .style(Style::default().fg(Color::White))
-                .border_type(BorderType::Plain),
-        )
+        .block(Block::default().borders(Borders::NONE))
 }
 
 pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<(), io::Error> {
@@ -101,41 +107,22 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<(), io::Error> {
     enable_raw_mode()?;
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
-    let menu_titles = vec!["Lights", "Groups"];
+    let mut app_state = app.lock().unwrap();
     loop {
+        let tabs = draw_tabs(&app_state)?;
         terminal.draw(|f| {
             let size = f.size();
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .margin(5)
+                .margin(3)
                 .constraints([Constraint::Length(3), Constraint::Min(0)].as_ref())
                 .split(size);
 
-            let block = Block::default().style(Style::default().bg(Color::Black).fg(Color::White));
-            f.render_widget(block, size);
-            let titles = menu_titles
-                .iter()
-                .map(|t| {
-                    let (first, rest) = t.split_at(0);
-                    Spans::from(vec![
-                        Span::styled(first, Style::default().fg(Color::Yellow)),
-                        Span::styled(rest, Style::default().fg(Color::Green)),
-                    ])
-                })
-                .collect();
-            let tabs = Tabs::new(titles)
-                .block(Block::default().borders(Borders::ALL).title("Tabs"))
-                .select(0)
-                .style(Style::default().fg(Color::Cyan))
-                .highlight_style(
-                    Style::default()
-                        .add_modifier(Modifier::BOLD)
-                        .bg(Color::Black),
-                );
-            f.render_widget(tabs, chunks[0]);
+            let title = draw_title();
+            f.render_widget(title, chunks[0]);
+            f.render_widget(tabs, chunks[1]);
         })?;
         if let Event::Key(key) = event::read()? {
-            let mut app_state = app.lock().unwrap();
             match key.code {
                 KeyCode::Char('q') => break,
                 KeyCode::Right => app_state.tabstate.next(),
