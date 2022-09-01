@@ -34,6 +34,10 @@ impl Events {
         });
         Events { rx, tx }
     }
+    /// Block current thread and try to read event
+    pub fn next(&self) -> Result<IoEvent, mpsc::RecvError> {
+        self.rx.recv()
+    }
 }
 
 #[derive(Debug)]

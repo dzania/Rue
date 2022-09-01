@@ -1,10 +1,14 @@
+use crate::event::{
+    events::{Events, IoEvent},
+    key::Key,
+};
 use crate::App;
 
 use crossterm::{
     event::{self, Event, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use std::io;
+use std::{io, time::Duration};
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -64,7 +68,6 @@ pub fn draw_tabs(app: &App) -> Result<Tabs, io::Error> {
         .collect();
     Ok(Tabs::new(tabs)
         .block(Block::default().borders(Borders::ALL).title("Menu"))
-
         .select(app.tabstate.index)
         .style(Style::default().fg(Color::Cyan))
         .highlight_style(
@@ -110,6 +113,7 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<(), io::Error> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
     let mut app_state = app.lock().unwrap();
+    let events = Events::new(Duration::from_millis(250));
     loop {
         let tabs = draw_tabs(&app_state)?;
         terminal.draw(|f| {
@@ -124,14 +128,16 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<(), io::Error> {
             f.render_widget(title, chunks[0]);
             f.render_widget(tabs, chunks[1]);
         })?;
-        if let Event::Key(key) = event::read()? {
-            match key.code {
-                KeyCode::Char('q') => break,
-                KeyCode::Right => app_state.tabstate.next(),
-                KeyCode::Char('l') => app_state.tabstate.next(),
-                KeyCode::Left => app_state.tabstate.previous(),
-                KeyCode::Char('h') => app_state.tabstate.previous(),
-                _ => {}
+        match events.next().unwrap() {
+            IoEvent::Input(key) => {
+                if key == Key::Ctrl('q') {
+                    break;
+                } else {
+                    todo!()
+                }
+            }
+            IoEvent::Tick => {
+                todo!()
             }
         }
     }

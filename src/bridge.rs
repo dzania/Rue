@@ -14,7 +14,6 @@ pub struct Bridge {
 
 pub enum BridgeErrors {
     ButtonNotPressed,
-    #[allow(dead_code)]
     NoBridgesFound,
 }
 
@@ -32,7 +31,7 @@ impl Bridge {
     }
 
     // Send parallel requests to all bridges found
-    pub async fn create_user() -> Result<(), ConfigError> {
+    pub async fn create_user(&self) -> Result<(), ConfigError> {
         let ips: Vec<String> = Bridge::find_bridges()
             .await
             .expect("No bridges found")
@@ -66,7 +65,7 @@ impl Bridge {
                 .await;
 
             if let Some(message) = rx.recv().await {
-                if let Ok(user) = Bridge::handle_authorize_response(message).await {
+                if let Ok(user) = Bridge::handle_authorize_response(&self, message).await {
                     user.save().await?;
                     break;
                 }
@@ -90,11 +89,16 @@ impl Bridge {
 
     // TODO: Reasonable error
     pub async fn handle_authorize_response(
+        &self,
         message: serde_json::Value,
     ) -> Result<User, BridgeErrors> {
         match message[0].get("success") {
             Some(message) => {
-                let user: User = serde_json::from_value(message.to_owned()).unwrap();
+                let username = serde_json::from_value(message.to_owned()).unwrap();
+                let user = User {
+                    username,
+                    bridge_adress: self.internalipaddress.to_owned(),
+                };
                 Ok(user)
             }
             None => Err(BridgeErrors::ButtonNotPressed),

@@ -12,6 +12,7 @@ const CONFIG_NAME: &str = "rue.conf";
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
     username: String,
+    bridge_adress: String,
 }
 
 impl User {
@@ -44,9 +45,8 @@ impl User {
     }
     // Load username(token) used for api calls
     pub fn load() -> Result<Self, ConfigError> {
-        let username = fs::read_to_string(User::get_home_dir()?.join(FILE_PATH))
+        let user = fs::read_to_string(User::get_home_dir()?.join(FILE_PATH))
             .map_err(|e| ConfigError::FileReadError(e.to_string()))?;
-        let user = User { username };
         Ok(user)
     }
 }

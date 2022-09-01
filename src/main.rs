@@ -1,3 +1,4 @@
+mod event;
 mod ui;
 use rue::App;
 use std::sync::{Arc, Mutex};
