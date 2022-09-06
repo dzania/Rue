@@ -130,14 +130,14 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<(), io::Error> {
         })?;
         match events.next().unwrap() {
             IoEvent::Input(key) => {
-                if key == Key::Ctrl('q') {
+                if key == Key::Ctrl('c') {
                     break;
                 } else {
-                    todo!()
+                    handlers::handle_key_events(key, &mut app).await;
                 }
             }
             IoEvent::Tick => {
-                todo!()
+                app.tick_update();
             }
         }
     }
