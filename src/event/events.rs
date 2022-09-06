@@ -39,6 +39,11 @@ impl Events {
         self.rx.recv()
     }
 }
+impl Default for Events {
+    fn default() -> Self {
+        Self::new(Duration::from_millis(150))
+    }
+}
 
 #[derive(Debug)]
 pub enum IoEvent {
