@@ -10,7 +10,7 @@ use tui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, BorderType, Borders, Paragraph, Tabs},
+    widgets::{Block, Borders, Paragraph, Tabs},
     Terminal,
 };
 
@@ -48,6 +48,12 @@ impl TabsState {
     }
 }
 
+impl Default for TabsState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub fn draw_tabs(app: &App) -> Result<Tabs, io::Error> {
     let tabs = app
         .tabstate
@@ -64,7 +70,6 @@ pub fn draw_tabs(app: &App) -> Result<Tabs, io::Error> {
         .collect();
     Ok(Tabs::new(tabs)
         .block(Block::default().borders(Borders::ALL).title("Menu"))
-
         .select(app.tabstate.index)
         .style(Style::default().fg(Color::Cyan))
         .highlight_style(

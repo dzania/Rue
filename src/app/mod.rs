@@ -1,13 +1,5 @@
-use config::User;
-use ui::TabsState;
-
-pub mod api;
-pub mod bridge;
-pub mod config;
-pub mod errors;
-pub mod event;
-pub mod lights;
-pub mod ui;
+use crate::config::User;
+use crate::ui::TabsState;
 
 pub struct App {
     pub user: Option<User>,
