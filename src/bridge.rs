@@ -41,8 +41,7 @@ impl Bridge {
             let requests = stream::iter(bridges.clone())
                 .map(|bridge| {
                     tokio::spawn(async move {
-                        let resp = Bridge::authorize_user_request(&bridge.internalipaddress).await;
-                        resp
+                        Bridge::authorize_user_request(&bridge.internalipaddress).await
                     })
                 })
                 .buffer_unordered(bridges.len());
