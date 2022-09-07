@@ -1,6 +1,13 @@
-mod ui;
-use rue::App;
+use app::App;
 use std::sync::{Arc, Mutex};
+
+pub mod app;
+pub mod bridge;
+pub mod config;
+pub mod errors;
+pub mod event;
+pub mod lights;
+pub mod ui;
 
 #[tokio::main]
 async fn main() {
