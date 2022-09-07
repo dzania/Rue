@@ -40,10 +40,10 @@ impl fmt::Debug for BridgeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             BridgeError::ButtonNotPressed => {
-                write!(f, "{:?}", self)
+                write!(f, "{:?}", &self)
             }
             BridgeError::NoBridgesFound => {
-                write!(f, "{:?}", self)
+                write!(f, "{:?}", &self)
             }
             BridgeError::RequestError(msg) => {
                 write!(f, "Request error: {}", msg)
