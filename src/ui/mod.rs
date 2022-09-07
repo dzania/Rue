@@ -4,17 +4,14 @@ use crate::event::{
 };
 use crate::App;
 
-use crossterm::{
-    event::{self, Event, KeyCode},
-    terminal::{disable_raw_mode, enable_raw_mode},
-};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use std::{io, time::Duration};
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, BorderType, Borders, Paragraph, Tabs},
+    widgets::{Block, Borders, Paragraph, Tabs},
     Terminal,
 };
 
@@ -49,6 +46,12 @@ impl TabsState {
         } else {
             self.index = self.titles.len() - 1;
         }
+    }
+}
+
+impl Default for TabsState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
