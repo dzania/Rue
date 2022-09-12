@@ -2,13 +2,16 @@ use crate::{
     config::User,
     errors::{BridgeError, ConfigError},
 };
-use futures::{stream, StreamExt};
+use futures::{pin_mut, stream, StreamExt};
+use mdns::{Record, RecordKind};
 use reqwest::{Client, Error};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::{thread, time::Duration};
+use std::{net::IpAddr, thread, time::Duration};
 use tokio::sync::mpsc;
+
+const SERVICE_NAME: &'static str = "_hue._tcp.local";
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Bridge {
@@ -25,6 +28,36 @@ impl Bridge {
             panic!("No bridges found");
         }
         Ok(request)
+    }
+    /// Find bridges using mdns method
+    /// https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/#mDNS
+    pub async fn mdns_discovery() -> Result<Vec<Self>, mdns::Error> {
+        println!("Starting mdns search...");
+        let stream = mdns::discover::all(SERVICE_NAME, Duration::from_millis(10))?.listen();
+        pin_mut!(stream);
+        let mut bridges = vec![];
+        while let Some(Ok(response)) = stream.next().await {
+            println!("{:#?}", response);
+            let addr = response.records().filter_map(Bridge::to_ip_addr).next();
+
+            if let Some(addr) = addr {
+                println!("found cast device at {}", addr);
+                bridges.push(Bridge {
+                    internalipaddress: addr.to_string(),
+                });
+                break;
+            } else {
+                println!("cast device does not advertise address");
+            }
+        }
+        Ok(bridges)
+    }
+    fn to_ip_addr(record: &Record) -> Option<IpAddr> {
+        match record.kind {
+            RecordKind::A(addr) => Some(addr.into()),
+            RecordKind::AAAA(addr) => Some(addr.into()),
+            _ => None,
+        }
     }
 
     // Send parallel requests to all bridges found
