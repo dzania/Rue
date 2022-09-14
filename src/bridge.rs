@@ -31,26 +31,26 @@ impl Bridge {
     }
     /// Find bridges using mdns method
     /// https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/#mDNS
-    pub async fn mdns_discovery() -> Result<Vec<Self>, mdns::Error> {
+    // FIXME: remove print later and refactor to_ip_addr(record: &Record)
+    pub async fn mdns_discovery() -> Result<Self, mdns::Error> {
         println!("Starting mdns search...");
         let stream = mdns::discover::all(SERVICE_NAME, Duration::from_millis(10))?.listen();
         pin_mut!(stream);
-        let mut bridges = vec![];
+        let mut bridge = Bridge {
+            internalipaddress: "".into(),
+        };
         while let Some(Ok(response)) = stream.next().await {
-            println!("{:#?}", response);
             let addr = response.records().filter_map(Bridge::to_ip_addr).next();
 
             if let Some(addr) = addr {
-                println!("found cast device at {}", addr);
-                bridges.push(Bridge {
-                    internalipaddress: addr.to_string(),
-                });
+                println!("Found bridge at {}", addr);
+                bridge.internalipaddress = addr.to_string();
                 break;
             } else {
-                println!("cast device does not advertise address");
+                println!("Bridge does not advertise address");
             }
         }
-        Ok(bridges)
+        Ok(bridge)
     }
     fn to_ip_addr(record: &Record) -> Option<IpAddr> {
         match record.kind {
