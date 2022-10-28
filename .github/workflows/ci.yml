@@ -49,15 +49,3 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
-
-  docs:
-    name: Deploy docs
-    runs-on: ubuntu-latest
-    steps: 
-      - name: Serve docs
-        uses: actions/checkout@master
-      - run: cargo doc --no-deps
-      - run: rm -rf ./docs
-      - run: echo "<meta http-equiv=\"refresh\" content=\"0; url=build_wheel\">" > target/doc/index.html
-      - run: cp -r target/doc ./docs
-
