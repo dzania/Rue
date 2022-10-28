@@ -26,9 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     container: rust:lastest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
       - name: Build with Cargo
+        uses: actions/checkout@master
       - run: cargo doc --no-deps
       - run: rm -rf ./docs
       - run: echo "<meta http-equiv=\"refresh\" content=\"0; url=build_wheel\">" > target/doc/index.html
