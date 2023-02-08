@@ -1,56 +1,27 @@
-use std::fmt;
+use thiserror::Error;
 
+#[derive(Error, Debug)]
 pub enum ConfigError {
+    #[error("Error creating config file")]
     CreateFileError(String),
+    #[error("Error reading config file")]
     FileReadError(String),
+    #[error("Home directory not found")]
     HomeDirectoryNotFound(String),
+    #[error("Error serializing config file")]
     Serialize(String),
+    #[error("Error creating config directory")]
     CreateDirectoryError(String),
 }
-impl fmt::Debug for ConfigError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ConfigError::CreateFileError(msg) => {
-                write!(f, "CONFIG_ERROR Create file error: {}", msg)
-            }
-            ConfigError::FileReadError(msg) => {
-                write!(f, "CONFIG_ERROR Create config error: {}", msg)
-            }
-            ConfigError::HomeDirectoryNotFound(msg) => {
-                write!(f, "CONFIG_ERROR Home directory not found: {}", msg)
-            }
-            ConfigError::Serialize(msg) => {
-                write!(f, "CONFIG_ERROR Serialization error: {}", msg)
-            }
-            ConfigError::CreateDirectoryError(msg) => {
-                write!(f, "CONFIG_ERROR create config dirctory: {}", msg)
-            }
-        }
-    }
-}
 
+#[derive(Error, Debug)]
 pub enum BridgeError {
+    #[error("Bridge button not pressed")]
     ButtonNotPressed,
+    #[error("No bridges found")]
     NoBridgesFound,
+    #[error("Error sending request")]
     RequestError(String),
+    #[error("Error occured in response")]
     ResponseError(String),
-}
-
-impl fmt::Debug for BridgeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            BridgeError::ButtonNotPressed => {
-                write!(f, "{:?}", &self)
-            }
-            BridgeError::NoBridgesFound => {
-                write!(f, "{:?}", &self)
-            }
-            BridgeError::RequestError(msg) => {
-                write!(f, "Request error: {}", msg)
-            }
-            BridgeError::ResponseError(msg) => {
-                write!(f, "Response error: {}", msg)
-            }
-        }
-    }
 }
