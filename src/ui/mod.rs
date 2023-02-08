@@ -1,12 +1,16 @@
 use crate::App;
 
-use crate::event::{events, key::Key};
+use crate::{
+    bridge::Bridge,
+    //config::User,
+    event::{events, key::Key},
+};
 use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use std::{io, thread, time::Duration};
+use std::{io, sync::mpsc, thread, time::Duration};
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -140,12 +144,12 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
     enable_raw_mode()?;
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
-    let mut app_state = app.lock().unwrap();
-    let events = events::EventsHandler::new(Duration::from_millis(2));
+    let app_state = app.lock().unwrap();
+    let events = events::EventsHandler::new(Duration::from_millis(500));
 
     loop {
         let tabs = draw_tabs(&app_state);
-        // do we need multiple terminal draw?
+
         terminal.draw(|f| {
             let title = draw_title();
             let size = f.size();
@@ -157,7 +161,17 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
             f.render_widget(title, chunks[0]);
 
             if app_state.user.is_none() {
-                let progress = draw_discovery_screen(1);
+                let (tx, rx) = mpsc::channel();
+                let mut counter = 1;
+                let progress = draw_discovery_screen(counter);
+                f.render_widget(progress, chunks[0]);
+                tokio::spawn(async move {
+                    Bridge::create_user().await;
+                    counter += 1;
+                    tx.send(counter).unwrap();
+                });
+                let received = rx.recv().unwrap();
+                let progress = draw_discovery_screen(received);
                 f.render_widget(progress, chunks[0]);
             } else {
                 f.render_widget(tabs, chunks[1]);

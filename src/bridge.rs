@@ -12,6 +12,7 @@ use std::{net::IpAddr, thread, time::Duration};
 use tokio::sync::mpsc;
 
 const MDNS_SERVICE_NAME: &str = "_hue._tcp.local";
+const DISCOVERY_URL: &str = "https://discovery.meethue.com/";
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Bridge {
@@ -20,10 +21,7 @@ pub struct Bridge {
 impl Bridge {
     // find bridges using discovery url
     pub async fn find_bridges() -> Result<Vec<Self>, Error> {
-        let request: Vec<Bridge> = reqwest::get("https://discovery.meethue.com/")
-            .await?
-            .json()
-            .await?;
+        let request: Vec<Bridge> = reqwest::get(DISCOVERY_URL).await?.json().await?;
         if request.is_empty() {
             panic!("No bridges found");
         }
