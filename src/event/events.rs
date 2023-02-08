@@ -9,12 +9,12 @@ use std::time::Duration;
 
 /// Main event handler to communicate between
 /// input handler and rendering loop
-pub struct Events {
-    pub rx: Receiver<IoEvent>,
-    pub tx: Sender<IoEvent>,
+pub struct EventsHandler {
+    pub rx: Receiver<IoEvent<Key>>,
+    pub tx: Sender<IoEvent<Key>>,
 }
 
-impl Events {
+impl EventsHandler {
     pub fn new(tick_rate: Duration) -> Self {
         let (tx, rx) = mpsc::channel();
         let event_tx = tx.clone();
@@ -32,17 +32,22 @@ impl Events {
                 event_tx.send(IoEvent::Tick).unwrap();
             }
         });
-        Events { rx, tx }
+        EventsHandler { rx, tx }
+    }
+    /// Attempts to read an event.
+    /// This function will block the current thread.
+    pub fn next(&self) -> Result<IoEvent<Key>, mpsc::RecvError> {
+        self.rx.recv()
     }
 }
-impl Default for Events {
+impl Default for EventsHandler {
     fn default() -> Self {
         Self::new(Duration::from_millis(150))
     }
 }
 
 #[derive(Debug)]
-pub enum IoEvent {
+pub enum IoEvent<Key> {
     Input(Key),
     Tick,
 }

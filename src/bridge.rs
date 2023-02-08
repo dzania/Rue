@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::{net::IpAddr, thread, time::Duration};
 use tokio::sync::mpsc;
 
-const SERVICE_NAME: &'static str = "_hue._tcp.local";
+const MDNS_SERVICE_NAME: &str = "_hue._tcp.local";
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Bridge {
@@ -34,7 +34,7 @@ impl Bridge {
     // FIXME: remove print later and refactor to_ip_addr(record: &Record)
     pub async fn mdns_discovery() -> Result<Self, mdns::Error> {
         println!("Starting mdns search...");
-        let stream = mdns::discover::all(SERVICE_NAME, Duration::from_millis(10))?.listen();
+        let stream = mdns::discover::all(MDNS_SERVICE_NAME, Duration::from_millis(10))?.listen();
         pin_mut!(stream);
         let mut bridge = Bridge {
             internalipaddress: "".into(),

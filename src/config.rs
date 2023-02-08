@@ -47,7 +47,7 @@ impl User {
         Ok(())
     }
 
-    // Load username(token) used for api calls
+    // Load user used for api calls
     pub fn load() -> Result<Self, ConfigError> {
         let file_path = User::get_config_path()?;
         let file =
