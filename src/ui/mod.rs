@@ -1,16 +1,9 @@
 use crate::App;
 
-use crate::{
-    bridge::Bridge,
-    //config::User,
-    event::{events, key::Key},
-};
+use crate::event::{events, key::Key};
 use anyhow::Result;
-use crossterm::{
-    event::{self, Event, KeyCode},
-    terminal::{disable_raw_mode, enable_raw_mode},
-};
-use std::{io, sync::mpsc, thread, time::Duration};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use std::{io, sync::mpsc, time::Duration};
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -32,12 +25,7 @@ pub struct TabsState {
 impl TabsState {
     pub fn new() -> Self {
         TabsState {
-            titles: vec![
-                "Rooms".into(),
-                "Lights".into(),
-                "Groups".into(),
-                "Help".into(),
-            ],
+            titles: vec!["Rooms".into(), "Lights".into(), "Groups".into()],
 
             index: 0,
         }
@@ -87,25 +75,21 @@ pub fn draw_tabs(app: &App) -> Tabs {
         )
 }
 
-/// Draw groups page
-/// TODO: get all groups
+/// TODO: Draw groups page
 pub fn draw_groups() -> Result<(), io::Error> {
     todo!()
 }
 
-/// Draw lights page
-/// TODO: get all lights
+/// TODO: Draw lights page
 pub fn draw_lights() -> Result<(), io::Error> {
     todo!()
 }
 
-/// Draw rooms page
-/// Create client
+/// TODO: Draw rooms page
 pub fn draw_rooms() -> Result<(), io::Error> {
     todo!()
 }
-/// Draw help page
-/// Create client
+/// TODO: Draw help page
 pub fn draw_help() -> Result<(), io::Error> {
     todo!()
 }
@@ -161,17 +145,7 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
             f.render_widget(title, chunks[0]);
 
             if app_state.user.is_none() {
-                let (tx, rx) = mpsc::channel();
-                let mut counter = 1;
-                let progress = draw_discovery_screen(counter);
-                f.render_widget(progress, chunks[0]);
-                tokio::spawn(async move {
-                    Bridge::create_user().await;
-                    counter += 1;
-                    tx.send(counter).unwrap();
-                });
-                let received = rx.recv().unwrap();
-                let progress = draw_discovery_screen(received);
+                let progress = draw_discovery_screen(1);
                 f.render_widget(progress, chunks[0]);
             } else {
                 f.render_widget(tabs, chunks[1]);
