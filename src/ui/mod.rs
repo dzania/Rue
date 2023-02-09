@@ -3,7 +3,7 @@ use crate::App;
 use crate::event::{events, key::Key};
 use anyhow::Result;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use std::{io, sync::mpsc, time::Duration};
+use std::{io, time::Duration};
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -155,6 +155,8 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
             events::IoEvent::Input(key) => {
                 if key == Key::Char('q') {
                     break;
+                } else {
+                    todo!();
                 }
             }
 

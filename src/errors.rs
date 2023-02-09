@@ -27,3 +27,9 @@ pub enum BridgeError {
     #[error("Save user error")]
     SaveUser(String),
 }
+
+impl From<reqwest::Error> for BridgeError {
+    fn from(error: reqwest::Error) -> Self {
+        BridgeError::RequestError(error.to_string())
+    }
+}

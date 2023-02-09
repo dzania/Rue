@@ -1,7 +1,7 @@
 use crate::{config::User, errors::BridgeError};
 use futures::{pin_mut, stream, StreamExt};
 use mdns::{Record, RecordKind};
-use reqwest::{Client, Error};
+use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -17,7 +17,7 @@ pub struct Bridge {
 }
 impl Bridge {
     // find bridges using discovery url
-    pub async fn find_bridges() -> Result<Vec<Self>, Error> {
+    pub async fn find_bridges() -> Result<Vec<Self>, BridgeError> {
         let request: Vec<Bridge> = reqwest::get(DISCOVERY_URL).await?.json().await?;
         Ok(request)
     }
@@ -37,7 +37,6 @@ impl Bridge {
                 bridges.push(Bridge {
                     internal_ip_address: addr.to_string(),
                 });
-
                 break;
             } else {
                 println!("Bridge does not advertise address");
@@ -60,9 +59,7 @@ impl Bridge {
         //
         let bridges = match Bridge::mdns_discovery().await {
             Ok(bridges) => bridges,
-            Err(_) => Bridge::find_bridges()
-                .await
-                .map_err(|e| BridgeError::RequestError(e.to_string()))?,
+            Err(_) => Bridge::find_bridges().await?,
         };
 
         // Poll bridge for minute
