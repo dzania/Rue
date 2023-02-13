@@ -1,11 +1,16 @@
-use crate::{config::User, errors::BridgeError};
+use crate::{config::User, errors::BridgeError, App};
 use futures::{pin_mut, stream, StreamExt};
 use mdns::{Record, RecordKind};
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::{net::IpAddr, thread, time::Duration};
+use std::{
+    net::IpAddr,
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
 use tokio::sync::mpsc;
 
 const MDNS_SERVICE_NAME: &str = "_hue._tcp.local";
@@ -18,6 +23,7 @@ pub struct Bridge {
 impl Bridge {
     // find bridges using discovery url
     pub async fn find_bridges() -> Result<Vec<Self>, BridgeError> {
+        println!("find request");
         let request: Vec<Bridge> = reqwest::get(DISCOVERY_URL).await?.json().await?;
         Ok(request)
     }
@@ -27,9 +33,13 @@ impl Bridge {
     pub async fn mdns_discovery() -> Result<Vec<Self>, mdns::Error> {
         println!("Starting mdns search...");
         let stream = mdns::discover::all(MDNS_SERVICE_NAME, Duration::from_secs(10))?.listen();
+        println!("here1");
         pin_mut!(stream);
+        println!("here2");
         let mut bridges: Vec<Bridge> = vec![];
+        println!("here3");
         while let Some(Ok(response)) = stream.next().await {
+            println!("here4");
             let addr = response.records().find_map(Bridge::to_ip_addr);
 
             if let Some(addr) = addr {
@@ -44,6 +54,7 @@ impl Bridge {
         }
         Ok(bridges)
     }
+    /// Helper function to map Record for IpAddr
     fn to_ip_addr(record: &Record) -> Option<IpAddr> {
         match record.kind {
             RecordKind::A(addr) => Some(addr.into()),
@@ -53,7 +64,7 @@ impl Bridge {
     }
 
     // Send parallel requests to all bridges found
-    pub async fn create_user() -> Result<(), BridgeError> {
+    pub async fn create_user(loader_progress: Arc<Mutex<u64>>) -> Result<(), BridgeError> {
         // Search bridges using mdns method if no result
         // search using discovery endpoint
         //
@@ -63,7 +74,7 @@ impl Bridge {
         };
 
         // Poll bridge for minute
-        for _ in 1..25 {
+        for i in 1..25 {
             let (tx, mut rx) = mpsc::channel(4);
             let requests = stream::iter(bridges.clone())
                 .map(|bridge| {
@@ -73,25 +84,38 @@ impl Bridge {
                 })
                 .buffer_unordered(bridges.len());
 
+            // Use channel to because we cant break main loop from this scope
+            // FIXME: Maybe there is better way to do this for now leave it as is
             requests
                 .for_each(|b| async {
                     match b {
-                        Ok(Ok(b)) => {
-                            let _ = tx.send(b).await;
+                        Ok(resp) => {
+                            let _ = tx.send(resp).await;
                         }
-                        // FIXME: Shouldn't print to std
-                        Ok(Err(e)) => println!("Got a reqwest::Error: {:?}", e),
-                        Err(e) => println!("Error: {}", e),
+                        Err(e) => {
+                            let _ = tx
+                                .send(Err(BridgeError::InternalError(e.to_string())))
+                                .await;
+                        }
                     }
                 })
                 .await;
 
-            if let Some(user) = rx.recv().await {
-                user.save()
-                    .await
-                    .map_err(|e| BridgeError::SaveUser(e.to_string()))?;
-                break;
+            if let Some(resp) = rx.recv().await {
+                match resp {
+                    Ok(user) => {
+                        user.save()
+                            .await
+                            .map_err(|e| BridgeError::SaveUser(e.to_string()))?;
+                        break;
+                    }
+                    Err(BridgeError::ButtonNotPressed) => (),
+                    Err(_) => (),
+                }
             };
+            let mut loader = loader_progress.lock().unwrap();
+            *loader += i;
+            println!("{}", loader);
             thread::sleep(Duration::from_secs(5));
         }
         Ok(())

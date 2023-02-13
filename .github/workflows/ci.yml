@@ -20,7 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cargo install cargo-clippy
+        rustup add clippy
         cargo install cargo-fmt
 
     - name: Format code

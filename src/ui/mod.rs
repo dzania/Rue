@@ -1,9 +1,11 @@
-use crate::App;
-
-use crate::event::{events, key::Key};
+use crate::{
+    bridge::Bridge,
+    event::{events, key::Key},
+    App,
+};
 use anyhow::Result;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use std::{io, time::Duration};
+use std::{io, thread, time::Duration};
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -121,6 +123,9 @@ pub fn draw_discovery_screen<'a>(counter: u64) -> LineGauge<'a> {
         .ratio(ratio)
 }
 
+#[derive(Debug, Clone, Copy)]
+struct ProgressState {}
+
 pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
@@ -130,6 +135,14 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
     terminal.clear()?;
     let app_state = app.lock().unwrap();
     let events = events::EventsHandler::new(Duration::from_millis(500));
+    let loader_progress = Arc::new(Mutex::new(0));
+
+    if app_state.user.is_none() {
+        let loader_progress = Arc::clone(&loader_progress);
+        tokio::spawn(async move {
+            Bridge::create_user(loader_progress).await.unwrap();
+        });
+    }
 
     loop {
         let tabs = draw_tabs(&app_state);
@@ -145,8 +158,9 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
             f.render_widget(title, chunks[0]);
 
             if app_state.user.is_none() {
-                let progress = draw_discovery_screen(1);
-                f.render_widget(progress, chunks[0]);
+                let loader_progress = Arc::clone(&loader_progress);
+                let progress_bar = draw_discovery_screen(*loader_progress.lock().unwrap());
+                f.render_widget(progress_bar, chunks[0]);
             } else {
                 f.render_widget(tabs, chunks[1]);
             }
@@ -164,6 +178,7 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
                 app_state.update_on_tick();
             }
         }
+        //println!("{:?}", loader_progress);
     }
     // restore terminal
     disable_raw_mode()?;

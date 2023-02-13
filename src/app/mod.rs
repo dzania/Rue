@@ -4,7 +4,6 @@ use crate::ui::TabsState;
 pub struct App {
     pub user: Option<User>,
     pub tabstate: TabsState,
-    pub bridge_discover_progress: u32,
 }
 
 impl App {
@@ -17,7 +16,6 @@ impl App {
         App {
             user,
             tabstate: TabsState::new(),
-            bridge_discover_progress: 0,
         }
     }
     pub fn authorized(&self) -> bool {

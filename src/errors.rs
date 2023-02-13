@@ -26,6 +26,8 @@ pub enum BridgeError {
     ResponseError(String),
     #[error("Save user error")]
     SaveUser(String),
+    #[error("Internal error")]
+    InternalError(String),
 }
 
 impl From<reqwest::Error> for BridgeError {
@@ -33,4 +35,3 @@ impl From<reqwest::Error> for BridgeError {
         BridgeError::RequestError(error.to_string())
     }
 }
-
