@@ -33,3 +33,4 @@ impl From<reqwest::Error> for BridgeError {
         BridgeError::RequestError(error.to_string())
     }
 }
+
