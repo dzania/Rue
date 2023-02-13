@@ -20,7 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        rustup add clippy
+        rustup component add clippy
         rustup component add rustfmt
 
     - name: Format code
