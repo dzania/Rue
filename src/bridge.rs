@@ -1,9 +1,10 @@
 use crate::{config::User, errors::BridgeError, App};
-use futures::{pin_mut, stream, StreamExt};
-use mdns::{Record, RecordKind};
+use futures::{stream, StreamExt};
+//use mdns::{Record, RecordKind};
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
+use simple_mdns::sync_discovery::OneShotMdnsResolver;
 use std::collections::HashMap;
 use std::{
     net::IpAddr,
@@ -13,65 +14,49 @@ use std::{
 };
 use tokio::sync::mpsc;
 
-const MDNS_SERVICE_NAME: &str = "_hue._tcp.local";
+const MDNS_BRIDGE_SERVICE_NAME: &str = "_hue._tcp.local";
 const DISCOVERY_URL: &str = "https://discovery.meethue.com/";
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Bridge {
+    #[serde(rename = "internalipaddress")]
     internal_ip_address: String,
 }
 impl Bridge {
     // find bridges using discovery url
     pub async fn find_bridges() -> Result<Vec<Self>, BridgeError> {
-        println!("find request");
+        //println!("find request");
         let request: Vec<Bridge> = reqwest::get(DISCOVERY_URL).await?.json().await?;
         Ok(request)
     }
     /// Find bridges using mdns method
     /// https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/#mDNS
     // FIXME: remove print later and refactor to_ip_addr(record: &Record)
-    pub async fn mdns_discovery() -> Result<Vec<Self>, mdns::Error> {
-        println!("Starting mdns search...");
-        let stream = mdns::discover::all(MDNS_SERVICE_NAME, Duration::from_secs(10))?.listen();
-        println!("here1");
-        pin_mut!(stream);
-        println!("here2");
-        let mut bridges: Vec<Bridge> = vec![];
-        println!("here3");
-        while let Some(Ok(response)) = stream.next().await {
-            println!("here4");
-            let addr = response.records().find_map(Bridge::to_ip_addr);
+    pub async fn mdns_discovery() /*Result<Vec<Self>, mdns::Error>*/
+    {
+        //println!("Starting mdns search...");
+        let resolver = OneShotMdnsResolver::new().expect("Failed to create resolver");
+        let answer = resolver
+            .query_service_address(MDNS_BRIDGE_SERVICE_NAME)
+            .expect("Failed to query service address");
 
-            if let Some(addr) = addr {
-                println!("Found bridge at {}", addr);
-                bridges.push(Bridge {
-                    internal_ip_address: addr.to_string(),
-                });
-                break;
-            } else {
-                println!("Bridge does not advertise address");
-            }
-        }
-        Ok(bridges)
+        println!("{:?}", answer);
     }
     /// Helper function to map Record for IpAddr
-    fn to_ip_addr(record: &Record) -> Option<IpAddr> {
-        match record.kind {
-            RecordKind::A(addr) => Some(addr.into()),
-            RecordKind::AAAA(addr) => Some(addr.into()),
-            _ => None,
-        }
-    }
+    //fn to_ip_addr(record: &Record) -> Option<IpAddr> {
+    //match record.kind {
+    //RecordKind::A(addr) => Some(addr.into()),
+    //RecordKind::AAAA(addr) => Some(addr.into()),
+    //_ => None,
+    //}
+    //}
 
     // Send parallel requests to all bridges found
     pub async fn create_user(loader_progress: Arc<Mutex<u64>>) -> Result<(), BridgeError> {
         // Search bridges using mdns method if no result
         // search using discovery endpoint
-        //
-        let bridges = match Bridge::mdns_discovery().await {
-            Ok(bridges) => bridges,
-            Err(_) => Bridge::find_bridges().await?,
-        };
+        Bridge::mdns_discovery().await;
+        let bridges = Bridge::find_bridges().await?;
 
         // Poll bridge for minute
         for i in 1..25 {
@@ -115,7 +100,7 @@ impl Bridge {
             };
             let mut loader = loader_progress.lock().unwrap();
             *loader += i;
-            println!("{}", loader);
+            //println!("{}", loader);
             thread::sleep(Duration::from_secs(5));
         }
         Ok(())

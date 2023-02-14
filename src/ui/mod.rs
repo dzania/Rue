@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::Result;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use std::{io, thread, time::Duration};
+use std::{io, time::Duration};
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -123,8 +123,9 @@ pub fn draw_discovery_screen<'a>(counter: u64) -> LineGauge<'a> {
         .ratio(ratio)
 }
 
-#[derive(Debug, Clone, Copy)]
-struct ProgressState {}
+pub async fn start_register_user_ui(app: &Arc<Mutex<App>>) -> Result<()> {
+    todo!()
+}
 
 pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
     let stdout = io::stdout();
@@ -178,7 +179,6 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
                 app_state.update_on_tick();
             }
         }
-        //println!("{:?}", loader_progress);
     }
     // restore terminal
     disable_raw_mode()?;
