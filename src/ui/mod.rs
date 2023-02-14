@@ -111,7 +111,7 @@ pub fn draw_discovery_screen<'a>(counter: u64) -> LineGauge<'a> {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Looking for bridges"),
+                .title("Press the link button on your bridge"),
         )
         .gauge_style(
             Style::default()

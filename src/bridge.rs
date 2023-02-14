@@ -20,7 +20,7 @@ const DISCOVERY_URL: &str = "https://discovery.meethue.com/";
 #[derive(Deserialize, Debug, Clone)]
 pub struct Bridge {
     #[serde(rename = "internalipaddress")]
-    internal_ip_address: String,
+    internal_ip_address: IpAddr,
 }
 impl Bridge {
     // find bridges using discovery url
@@ -42,14 +42,6 @@ impl Bridge {
 
         println!("{:?}", answer);
     }
-    /// Helper function to map Record for IpAddr
-    //fn to_ip_addr(record: &Record) -> Option<IpAddr> {
-    //match record.kind {
-    //RecordKind::A(addr) => Some(addr.into()),
-    //RecordKind::AAAA(addr) => Some(addr.into()),
-    //_ => None,
-    //}
-    //}
 
     // Send parallel requests to all bridges found
     pub async fn create_user(loader_progress: Arc<Mutex<u64>>) -> Result<(), BridgeError> {
@@ -64,7 +56,7 @@ impl Bridge {
             let requests = stream::iter(bridges.clone())
                 .map(|bridge| {
                     tokio::spawn(async move {
-                        Bridge::authorize_user_request(&bridge.internal_ip_address).await
+                        Bridge::authorize_user_request(bridge.internal_ip_address).await
                     })
                 })
                 .buffer_unordered(bridges.len());
@@ -107,7 +99,7 @@ impl Bridge {
     }
 
     /// Send request to bridge to get User
-    pub async fn authorize_user_request(ip: &str) -> Result<User, BridgeError> {
+    pub async fn authorize_user_request(ip: IpAddr) -> Result<User, BridgeError> {
         let address = format!("http://{}/api", ip);
         let client = Client::new();
         let mut body = HashMap::new();
@@ -129,7 +121,7 @@ impl Bridge {
                 let username: String = serde_json::from_value(message.to_owned()).unwrap();
                 let user = User {
                     username,
-                    bridge_address: ip.into(),
+                    bridge_address: ip,
                 };
                 Ok(user)
             }
