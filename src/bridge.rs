@@ -1,10 +1,10 @@
 use crate::{config::User, errors::BridgeError, App};
 use futures::{stream, StreamExt};
-//use mdns::{Record, RecordKind};
-use reqwest::Client;
+//use mdns_sd::{ServiceDaemon, ServiceEvent};
+use reqwest::{Client, StatusCode};
 use serde::Deserialize;
 use serde_json::Value;
-use simple_mdns::sync_discovery::OneShotMdnsResolver;
+use simple_mdns::sync_discovery::ServiceDiscovery;
 use std::collections::HashMap;
 use std::{
     net::IpAddr,
@@ -14,7 +14,7 @@ use std::{
 };
 use tokio::sync::mpsc;
 
-const MDNS_BRIDGE_SERVICE_NAME: &str = "_hue._tcp.local";
+const MDNS_BRIDGE_SERVICE_NAME: &str = "_hue._tcp._local";
 const DISCOVERY_URL: &str = "https://discovery.meethue.com/";
 
 #[derive(Deserialize, Debug, Clone)]
@@ -24,22 +24,31 @@ pub struct Bridge {
 }
 impl Bridge {
     // find bridges using discovery url
+    // DEPREACTED: Shouldn't use in production
     pub async fn find_bridges() -> Result<Vec<Self>, BridgeError> {
         //println!("find request");
-        let request: Vec<Bridge> = reqwest::get(DISCOVERY_URL).await?.json().await?;
-        Ok(request)
+        let response = reqwest::get(DISCOVERY_URL).await?;
+        match response.status() {
+            StatusCode::OK => {
+                let bridges: Vec<Bridge> = response.json().await?;
+                Ok(bridges)
+            }
+            _ => Err(BridgeError::ResponseError(response.text().await?)),
+        }
     }
     /// Find bridges using mdns method
     /// https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/#mDNS
     // FIXME: remove print later and refactor to_ip_addr(record: &Record)
     pub async fn mdns_discovery() /*Result<Vec<Self>, mdns::Error>*/
     {
-        //println!("Starting mdns search...");
+        println!("Starting mdns search...");
+        use simple_mdns::sync_discovery::OneShotMdnsResolver;
         let resolver = OneShotMdnsResolver::new().expect("Failed to create resolver");
+        // querying for IP Address
+        println!("Querying");
         let answer = resolver
             .query_service_address(MDNS_BRIDGE_SERVICE_NAME)
             .expect("Failed to query service address");
-
         println!("{:?}", answer);
     }
 
@@ -48,6 +57,7 @@ impl Bridge {
         // Search bridges using mdns method if no result
         // search using discovery endpoint
         Bridge::mdns_discovery().await;
+
         let bridges = Bridge::find_bridges().await?;
 
         // Poll bridge for minute
@@ -92,7 +102,6 @@ impl Bridge {
             };
             let mut loader = loader_progress.lock().unwrap();
             *loader += i;
-            //println!("{}", loader);
             thread::sleep(Duration::from_secs(5));
         }
         Ok(())
@@ -114,11 +123,14 @@ impl Bridge {
             .text()
             .await
             .map_err(|e| BridgeError::ResponseError(e.to_string()))?;
-        let value: Value = serde_json::from_str(&data).unwrap();
+        let value: Value =
+            serde_json::from_str(&data).map_err(|e| BridgeError::InternalError(e.to_string()))?;
 
+        // FIXME: Add better parsing this is embarassing honestly
         match value[0].get("success") {
             Some(message) => {
-                let username: String = serde_json::from_value(message.to_owned()).unwrap();
+                let username: String = serde_json::from_value(message.to_owned())
+                    .map_err(|e| BridgeError::InternalError(e.to_string()))?;
                 let user = User {
                     username,
                     bridge_address: ip,

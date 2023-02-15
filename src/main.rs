@@ -12,6 +12,7 @@ pub mod ui;
 
 #[tokio::main]
 async fn main() {
-    let app = Arc::new(Mutex::new(App::new()));
-    ui::start_ui(&app).await.unwrap();
+    //let app = Arc::new(Mutex::new(App::new()));
+    //ui::start_ui(&app).await.unwrap();
+    bridge::Bridge::mdns_discovery().await;
 }
