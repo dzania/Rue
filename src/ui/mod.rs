@@ -4,7 +4,11 @@ use crate::{
     App,
 };
 use anyhow::Result;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use crossterm::{
+    event::DisableMouseCapture,
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, LeaveAlternateScreen},
+};
 use std::{io, time::Duration};
 use tui::{
     backend::CrosstermBackend,
@@ -18,6 +22,7 @@ use tui::{
 
 use std::sync::{Arc, Mutex};
 
+#[derive(Clone)]
 pub struct TabsState {
     pub titles: Vec<String>,
     pub index: usize,
@@ -51,7 +56,7 @@ impl Default for TabsState {
     }
 }
 
-pub fn draw_tabs(app: &App) -> Tabs {
+pub fn draw_tabs<'a>(app: &'a App) -> Tabs<'a> {
     let tabs = app
         .tabstate
         .titles
@@ -127,6 +132,13 @@ pub async fn start_register_user_ui(app: &Arc<Mutex<App>>) -> Result<()> {
     todo!()
 }
 
+fn exit() -> Result<()> {
+    disable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, LeaveAlternateScreen, DisableMouseCapture)?;
+    Ok(())
+}
+
 pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
@@ -134,20 +146,17 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
     enable_raw_mode()?;
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
-    let app_state = app.lock().unwrap();
+    let mut app_state = app.lock().unwrap();
     let events = events::EventsHandler::new(Duration::from_millis(500));
     let loader_progress = Arc::new(Mutex::new(0));
 
-    if app_state.user.is_none() {
-        let loader_progress = Arc::clone(&loader_progress);
-        tokio::spawn(async move {
-            Bridge::create_user(loader_progress).await.unwrap();
-        });
-    }
+    Bridge::discover_bridges().await?;
+    let loader_progress = Arc::clone(&loader_progress);
 
     loop {
-        let tabs = draw_tabs(&app_state);
-
+        let tab_state = app_state.clone();
+        let tabs = draw_tabs(&tab_state);
+        app_state.update_user();
         terminal.draw(|f| {
             let title = draw_title();
             let size = f.size();
@@ -174,15 +183,12 @@ pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
                     todo!();
                 }
             }
-
             events::IoEvent::Tick => {
                 app_state.update_on_tick();
             }
         }
     }
     // restore terminal
-    disable_raw_mode()?;
-    terminal.clear()?;
-    terminal.show_cursor()?;
+    exit()?;
     Ok(())
 }

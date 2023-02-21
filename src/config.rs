@@ -10,7 +10,7 @@ use std::{
 const CONFIG_DIR: &str = ".config/rue";
 const CONFIG_NAME: &str = "rue.json";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct User {
     pub username: String,
     pub bridge_address: IpAddr,

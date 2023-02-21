@@ -1,20 +1,18 @@
-use crate::{config::User, errors::BridgeError, App};
-use futures::{stream, StreamExt};
-//use mdns_sd::{ServiceDaemon, ServiceEvent};
+use crate::{config::User, errors::BridgeError};
+use futures::{pin_mut, stream, StreamExt};
+use mdns::{Record, RecordKind};
 use reqwest::{Client, StatusCode};
 use serde::Deserialize;
 use serde_json::Value;
-use simple_mdns::sync_discovery::ServiceDiscovery;
-use std::collections::HashMap;
 use std::{
+    collections::HashMap,
     net::IpAddr,
     sync::{Arc, Mutex},
-    thread,
     time::Duration,
 };
 use tokio::sync::mpsc;
 
-const MDNS_BRIDGE_SERVICE_NAME: &str = "_hue._tcp._local";
+const MDNS_BRIDGE_SERVICE_NAME: &str = "_hue._tcp.local";
 const DISCOVERY_URL: &str = "https://discovery.meethue.com/";
 
 #[derive(Deserialize, Debug, Clone)]
@@ -23,10 +21,14 @@ pub struct Bridge {
     internal_ip_address: IpAddr,
 }
 impl Bridge {
+    pub async fn discover_bridges() -> Result<Vec<Self>, BridgeError> {
+        match Bridge::mdns_discovery().await {
+            Ok(bridges) => Ok(bridges),
+            Err(_) => Bridge::nupnp_discovery().await,
+        }
+    }
     // find bridges using discovery url
-    // DEPREACTED: Shouldn't use in production
-    pub async fn find_bridges() -> Result<Vec<Self>, BridgeError> {
-        //println!("find request");
+    async fn nupnp_discovery() -> Result<Vec<Self>, BridgeError> {
         let response = reqwest::get(DISCOVERY_URL).await?;
         match response.status() {
             StatusCode::OK => {
@@ -38,28 +40,38 @@ impl Bridge {
     }
     /// Find bridges using mdns method
     /// https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/#mDNS
-    // FIXME: remove print later and refactor to_ip_addr(record: &Record)
-    pub async fn mdns_discovery() /*Result<Vec<Self>, mdns::Error>*/
-    {
-        println!("Starting mdns search...");
-        use simple_mdns::sync_discovery::OneShotMdnsResolver;
-        let resolver = OneShotMdnsResolver::new().expect("Failed to create resolver");
-        // querying for IP Address
-        println!("Querying");
-        let answer = resolver
-            .query_service_address(MDNS_BRIDGE_SERVICE_NAME)
-            .expect("Failed to query service address");
-        println!("{:?}", answer);
+    async fn mdns_discovery() -> Result<Vec<Self>, BridgeError> {
+        let stream =
+            mdns::discover::all(MDNS_BRIDGE_SERVICE_NAME, Duration::from_secs(5))?.listen();
+        pin_mut!(stream);
+        let mut bridges: Vec<Bridge> = vec![];
+        for response in stream.next().await {
+            if let Ok(response) = response {
+                let addr = response.records().find_map(Self::to_ip_addr);
+                if let Some(addr) = addr {
+                    bridges.push(Bridge {
+                        internal_ip_address: addr,
+                    });
+                } else {
+                    return Err(BridgeError::NoBridgesFound);
+                }
+            }
+        }
+        Ok(bridges)
+    }
+    fn to_ip_addr(record: &Record) -> Option<IpAddr> {
+        match record.kind {
+            RecordKind::A(addr) => Some(addr.into()),
+            RecordKind::AAAA(addr) => Some(addr.into()),
+            _ => None,
+        }
     }
 
     // Send parallel requests to all bridges found
-    pub async fn create_user(loader_progress: Arc<Mutex<u64>>) -> Result<(), BridgeError> {
-        // Search bridges using mdns method if no result
-        // search using discovery endpoint
-        Bridge::mdns_discovery().await;
-
-        let bridges = Bridge::find_bridges().await?;
-
+    pub async fn create_user(
+        bridges: Vec<Self>,
+        loader_progress: Arc<Mutex<u64>>,
+    ) -> Result<(), BridgeError> {
         // Poll bridge for minute
         for i in 1..25 {
             let (tx, mut rx) = mpsc::channel(4);
@@ -102,7 +114,8 @@ impl Bridge {
             };
             let mut loader = loader_progress.lock().unwrap();
             *loader += i;
-            thread::sleep(Duration::from_secs(5));
+            // FIXME: try to change to tokio::time::sleep
+            std::thread::sleep(Duration::from_secs(5));
         }
         Ok(())
     }
@@ -126,7 +139,7 @@ impl Bridge {
         let value: Value =
             serde_json::from_str(&data).map_err(|e| BridgeError::InternalError(e.to_string()))?;
 
-        // FIXME: Add better parsing this is embarassing honestly
+        // FIXME: Add better response parsing
         match value[0].get("success") {
             Some(message) => {
                 let username: String = serde_json::from_value(message.to_owned())

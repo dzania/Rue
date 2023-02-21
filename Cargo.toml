@@ -17,7 +17,6 @@ dirs = "4.0.0"
 log = "0.4.17"
 
 # Currently downgraded due to https://github.com/dylanmckay/mdns/issues/26
-mdns = "1.0.2"
+mdns = "2.0.2"
 anyhow = "1.0.69"
 thiserror = "1.0.38"
-simple-mdns = { version = "0.4.0", features = ["sync"] }
