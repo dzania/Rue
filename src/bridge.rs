@@ -1,11 +1,12 @@
 use crate::{config::User, errors::BridgeError};
 use futures::{pin_mut, stream, StreamExt};
+//use mdns_sd::{ServiceDaemon, ServiceEvent};
 use mdns::{Record, RecordKind};
 use reqwest::{Client, StatusCode};
 use serde::Deserialize;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::{
-    collections::HashMap,
     net::IpAddr,
     sync::{Arc, Mutex},
     time::Duration,
@@ -101,6 +102,7 @@ impl Bridge {
                 .await;
 
             if let Some(resp) = rx.recv().await {
+                println!("{:?}", resp);
                 match resp {
                     Ok(user) => {
                         user.save()
@@ -140,8 +142,12 @@ impl Bridge {
             serde_json::from_str(&data).map_err(|e| BridgeError::InternalError(e.to_string()))?;
 
         // FIXME: Add better response parsing
+        //
+        println!("{:?}", value);
         match value[0].get("success") {
             Some(message) => {
+                println!("WIADOMOŚĆ");
+                println!("{message}");
                 let username: String = serde_json::from_value(message.to_owned())
                     .map_err(|e| BridgeError::InternalError(e.to_string()))?;
                 let user = User {

@@ -35,6 +35,7 @@ impl User {
 
     // Store username(token) used for api calls
     pub async fn save(&self) -> Result<(), ConfigError> {
+        println!("here4");
         let config_file_path = User::get_config_path()?;
         let mut file = fs::File::create(&config_file_path)
             .map_err(|e| ConfigError::CreateFileError(e.to_string()))?;

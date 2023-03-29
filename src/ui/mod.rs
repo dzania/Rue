@@ -1,4 +1,5 @@
 use crate::{
+    banner::BANNER,
     bridge::Bridge,
     event::{events, key::Key},
     App,
@@ -24,7 +25,7 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct TabsState {
-    pub titles: Vec<String>,
+    pub pages: Vec<String>,
     pub index: usize,
 }
 
@@ -32,20 +33,20 @@ pub struct TabsState {
 impl TabsState {
     pub fn new() -> Self {
         TabsState {
-            titles: vec!["Rooms".into(), "Lights".into(), "Groups".into()],
+            pages: vec!["Rooms".into(), "Lights".into(), "Groups".into()],
 
             index: 0,
         }
     }
     pub fn next(&mut self) {
-        self.index = (self.index + 1) % self.titles.len();
+        self.index = (self.index + 1) % self.pages.len();
     }
 
     pub fn previous(&mut self) {
         if self.index > 0 {
             self.index -= 1;
         } else {
-            self.index = self.titles.len() - 1;
+            self.index = self.pages.len() - 1;
         }
     }
 }
@@ -56,10 +57,11 @@ impl Default for TabsState {
     }
 }
 
+#[allow(clippy::needless_lifetimes)]
 pub fn draw_tabs<'a>(app: &'a App) -> Tabs<'a> {
     let tabs = app
         .tabstate
-        .titles
+        .pages
         .iter()
         .map(|t| {
             Spans::from(vec![Span::styled(
@@ -128,7 +130,7 @@ pub fn draw_discovery_screen<'a>(counter: u64) -> LineGauge<'a> {
         .ratio(ratio)
 }
 
-pub async fn start_register_user_ui(app: &Arc<Mutex<App>>) -> Result<()> {
+pub async fn start_register_user_ui(_app: &Arc<Mutex<App>>) -> Result<()> {
     todo!()
 }
 
@@ -139,55 +141,58 @@ fn exit() -> Result<()> {
     Ok(())
 }
 
-pub async fn start_ui(app: &Arc<Mutex<App>>) -> Result<()> {
-    let stdout = io::stdout();
-    let backend = CrosstermBackend::new(stdout);
+pub async fn start_ui(app: &Arc<tokio::sync::Mutex<App>>, bridges: Vec<Bridge>) -> Result<()> {
+    //let stdout = io::stdout();
+    //let backend = CrosstermBackend::new(stdout);
 
-    enable_raw_mode()?;
-    let mut terminal = Terminal::new(backend)?;
-    terminal.clear()?;
-    let mut app_state = app.lock().unwrap();
-    let events = events::EventsHandler::new(Duration::from_millis(500));
+    //enable_raw_mode()?;
+    //let mut terminal = Terminal::new(backend)?;
+    //terminal.clear()?;
+    //terminal.hide_cursor()?;
+    //let mut app_state = app.lock().await;
+    //let events = events::EventsHandler::new(Duration::from_millis(500));
     let loader_progress = Arc::new(Mutex::new(0));
 
-    Bridge::discover_bridges().await?;
-    let loader_progress = Arc::clone(&loader_progress);
+    let counter = Arc::clone(&loader_progress);
+    //if app_state.user.is_none() {
+    tokio::spawn(async move { Bridge::create_user(bridges, counter).await });
+    //}
 
-    loop {
-        let tab_state = app_state.clone();
-        let tabs = draw_tabs(&tab_state);
-        app_state.update_user();
-        terminal.draw(|f| {
-            let title = draw_title();
-            let size = f.size();
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .margin(3)
-                .constraints([Constraint::Length(3), Constraint::Min(0)].as_ref())
-                .split(size);
-            f.render_widget(title, chunks[0]);
+    /*    loop {*/
+    /*let loader_progress = Arc::clone(&loader_progress);*/
+    /*let tab_state = app_state.clone();*/
+    /*let tabs = draw_tabs(&tab_state);*/
+    /*app_state.update_user();*/
+    /*terminal.draw(|f| {*/
+    /*let title = draw_title();*/
+    /*let size = f.size();*/
+    /*let chunks = Layout::default()*/
+    /*.direction(Direction::Vertical)*/
+    /*.margin(3)*/
+    /*.constraints([Constraint::Length(3), Constraint::Min(0)].as_ref())*/
+    /*.split(size);*/
+    /*f.render_widget(title, chunks[0]);*/
 
-            if app_state.user.is_none() {
-                let loader_progress = Arc::clone(&loader_progress);
-                let progress_bar = draw_discovery_screen(*loader_progress.lock().unwrap());
-                f.render_widget(progress_bar, chunks[0]);
-            } else {
-                f.render_widget(tabs, chunks[1]);
-            }
-        })?;
-        match events.next()? {
-            events::IoEvent::Input(key) => {
-                if key == Key::Char('q') {
-                    break;
-                } else {
-                    todo!();
-                }
-            }
-            events::IoEvent::Tick => {
-                app_state.update_on_tick();
-            }
-        }
-    }
+    /*if app_state.user.is_none() {*/
+    /*let progress_bar = draw_discovery_screen(*loader_progress.lock().unwrap());*/
+    /*f.render_widget(progress_bar, chunks[0]);*/
+    /*} else {*/
+    /*f.render_widget(tabs, chunks[1]);*/
+    /*}*/
+    /*})?;*/
+    /*match events.next()? {*/
+    /*events::IoEvent::Input(key) => {*/
+    /*if key == Key::Char('q') {*/
+    /*break;*/
+    /*} else {*/
+    /*todo!();*/
+    /*}*/
+    /*}*/
+    /*events::IoEvent::Tick => {*/
+    /*app_state.update_on_tick();*/
+    /*}*/
+    /*}*/
+    /*}*/
     // restore terminal
     exit()?;
     Ok(())

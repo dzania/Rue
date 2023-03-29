@@ -1,5 +1,9 @@
+use anyhow::Result;
 use app::App;
-use std::sync::{Arc, Mutex};
+use banner::BANNER;
+use bridge::Bridge;
+use std::io;
+use std::sync::Arc;
 
 pub mod app;
 pub mod banner;
@@ -12,8 +16,19 @@ pub mod lights;
 pub mod ui;
 
 #[tokio::main]
-async fn main() {
-    println!("{}", banner::BANNER);
-    //let app = Arc::new(Mutex::new(App::new()));
-    //ui::start_ui(&app).await.unwrap();
+async fn main() -> Result<()> {
+    let app = Arc::new(tokio::sync::Mutex::new(App::new()));
+    println!("{}", BANNER);
+    println!("Looking for bridges..");
+    let bridges = Bridge::discover_bridges().await?;
+    println!(
+        "Found {} bridges do you want to authorize? y/n",
+        &bridges.len()
+    );
+    let mut user_input = String::new();
+    let stdin = io::stdin();
+    stdin.read_line(&mut user_input)?;
+    Bridge::create_user(bridges, Arc::new(std::sync::Mutex::new(0))).await?;
+    //ui::start_ui(&app, bridges).await?;
+    Ok(())
 }
