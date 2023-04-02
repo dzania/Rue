@@ -28,7 +28,6 @@ async fn main() -> Result<()> {
     let mut user_input = String::new();
     let stdin = io::stdin();
     stdin.read_line(&mut user_input)?;
-    Bridge::create_user(bridges, Arc::new(std::sync::Mutex::new(0))).await?;
-    //ui::start_ui(&app, bridges).await?;
+    ui::start_ui(&app, bridges).await?;
     Ok(())
 }

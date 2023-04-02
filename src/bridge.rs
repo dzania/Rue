@@ -46,16 +46,14 @@ impl Bridge {
             mdns::discover::all(MDNS_BRIDGE_SERVICE_NAME, Duration::from_secs(5))?.listen();
         pin_mut!(stream);
         let mut bridges: Vec<Bridge> = vec![];
-        for response in stream.next().await {
-            if let Ok(response) = response {
-                let addr = response.records().find_map(Self::to_ip_addr);
-                if let Some(addr) = addr {
-                    bridges.push(Bridge {
-                        internal_ip_address: addr,
-                    });
-                } else {
-                    return Err(BridgeError::NoBridgesFound);
-                }
+        for response in (stream.next().await).into_iter().flatten() {
+            let addr = response.records().find_map(Self::to_ip_addr);
+            if let Some(addr) = addr {
+                bridges.push(Bridge {
+                    internal_ip_address: addr,
+                });
+            } else {
+                return Err(BridgeError::NoBridgesFound);
             }
         }
         Ok(bridges)
@@ -74,7 +72,7 @@ impl Bridge {
         loader_progress: Arc<Mutex<u64>>,
     ) -> Result<(), BridgeError> {
         // Poll bridge for minute
-        for i in 1..25 {
+        for _ in 0..25 {
             let (tx, mut rx) = mpsc::channel(4);
             let requests = stream::iter(bridges.clone())
                 .map(|bridge| {
@@ -102,7 +100,6 @@ impl Bridge {
                 .await;
 
             if let Some(resp) = rx.recv().await {
-                println!("{:?}", resp);
                 match resp {
                     Ok(user) => {
                         user.save()
@@ -115,8 +112,8 @@ impl Bridge {
                 }
             };
             let mut loader = loader_progress.lock().unwrap();
-            *loader += i;
-            // FIXME: try to change to tokio::time::sleep
+            *loader += 4;
+
             std::thread::sleep(Duration::from_secs(5));
         }
         Ok(())
@@ -146,15 +143,17 @@ impl Bridge {
         println!("{:?}", value);
         match value[0].get("success") {
             Some(message) => {
-                println!("WIADOMOŚĆ");
-                println!("{message}");
-                let username: String = serde_json::from_value(message.to_owned())
+                let user: HashMap<String, String> = serde_json::from_value(message.to_owned())
                     .map_err(|e| BridgeError::InternalError(e.to_string()))?;
-                let user = User {
-                    username,
-                    bridge_address: ip,
-                };
-                Ok(user)
+                if let Some(username) = user.get("username") {
+                    let user = User {
+                        username: username.to_owned(),
+                        bridge_address: ip,
+                    };
+                    Ok(user)
+                } else {
+                    Err(BridgeError::ResponseError("Can't decode username".into()))
+                }
             }
             None => Err(BridgeError::ButtonNotPressed),
         }

@@ -17,7 +17,7 @@ use tui::{
     style::{Color, Modifier, Style},
     symbols,
     text::{Span, Spans},
-    widgets::{Block, Borders, LineGauge, Paragraph, Tabs},
+    widgets::{Block, Borders, Gauge, LineGauge, Paragraph, Tabs},
     Terminal,
 };
 
@@ -108,26 +108,19 @@ fn draw_title<'a>() -> Paragraph<'a> {
     Paragraph::new("Rue")
         .style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
         .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::NONE))
+        .block(Block::default().borders(Borders::ALL))
 }
 
-pub fn draw_discovery_screen<'a>(counter: u64) -> LineGauge<'a> {
-    let sec = Duration::from_secs(counter).as_secs();
-    let ratio = sec as f64 / 100.0;
-    LineGauge::default()
+pub fn draw_discovery_screen<'a>(counter: u64) -> Gauge<'a> {
+    Gauge::default()
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .title("Press the link button on your bridge"),
         )
-        .gauge_style(
-            Style::default()
-                .fg(Color::Cyan)
-                .bg(Color::Black)
-                .add_modifier(Modifier::BOLD),
-        )
-        .line_set(symbols::line::THICK)
-        .ratio(ratio)
+        .gauge_style(Style::default().fg(Color::Blue).bg(Color::Black))
+        .ratio(counter as f64 / 100.0)
+        .use_unicode(false)
 }
 
 pub async fn start_register_user_ui(_app: &Arc<Mutex<App>>) -> Result<()> {
@@ -142,58 +135,59 @@ fn exit() -> Result<()> {
 }
 
 pub async fn start_ui(app: &Arc<tokio::sync::Mutex<App>>, bridges: Vec<Bridge>) -> Result<()> {
-    //let stdout = io::stdout();
-    //let backend = CrosstermBackend::new(stdout);
+    let stdout = io::stdout();
+    let backend = CrosstermBackend::new(stdout);
 
-    //enable_raw_mode()?;
-    //let mut terminal = Terminal::new(backend)?;
-    //terminal.clear()?;
-    //terminal.hide_cursor()?;
-    //let mut app_state = app.lock().await;
-    //let events = events::EventsHandler::new(Duration::from_millis(500));
+    enable_raw_mode()?;
+    let mut terminal = Terminal::new(backend)?;
+    terminal.clear()?;
+    terminal.hide_cursor()?;
+    let mut app_state = app.lock().await;
+    let events = events::EventsHandler::new(Duration::from_millis(500));
     let loader_progress = Arc::new(Mutex::new(0));
 
     let counter = Arc::clone(&loader_progress);
-    //if app_state.user.is_none() {
-    tokio::spawn(async move { Bridge::create_user(bridges, counter).await });
-    //}
+    if app_state.user.is_none() {
+        tokio::spawn(async move { Bridge::create_user(bridges, counter).await });
+    }
 
-    /*    loop {*/
-    /*let loader_progress = Arc::clone(&loader_progress);*/
-    /*let tab_state = app_state.clone();*/
-    /*let tabs = draw_tabs(&tab_state);*/
-    /*app_state.update_user();*/
-    /*terminal.draw(|f| {*/
-    /*let title = draw_title();*/
-    /*let size = f.size();*/
-    /*let chunks = Layout::default()*/
-    /*.direction(Direction::Vertical)*/
-    /*.margin(3)*/
-    /*.constraints([Constraint::Length(3), Constraint::Min(0)].as_ref())*/
-    /*.split(size);*/
-    /*f.render_widget(title, chunks[0]);*/
+    loop {
+        let loader_progress = Arc::clone(&loader_progress);
+        let tab_state = app_state.clone();
+        let tabs = draw_tabs(&tab_state);
+        app_state.update_user();
+        terminal.draw(|f| {
+            let title = draw_title();
+            let size = f.size();
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(3)
+                .constraints([Constraint::Length(3), Constraint::Min(0)].as_ref())
+                .split(size);
 
-    /*if app_state.user.is_none() {*/
-    /*let progress_bar = draw_discovery_screen(*loader_progress.lock().unwrap());*/
-    /*f.render_widget(progress_bar, chunks[0]);*/
-    /*} else {*/
-    /*f.render_widget(tabs, chunks[1]);*/
-    /*}*/
-    /*})?;*/
-    /*match events.next()? {*/
-    /*events::IoEvent::Input(key) => {*/
-    /*if key == Key::Char('q') {*/
-    /*break;*/
-    /*} else {*/
-    /*todo!();*/
-    /*}*/
-    /*}*/
-    /*events::IoEvent::Tick => {*/
-    /*app_state.update_on_tick();*/
-    /*}*/
-    /*}*/
-    /*}*/
-    // restore terminal
+            f.render_widget(title, chunks[0]);
+
+            if app_state.user.is_none() {
+                let progress_bar = draw_discovery_screen(*loader_progress.lock().unwrap());
+                f.render_widget(progress_bar, chunks[1]);
+            } else {
+                f.render_widget(tabs, chunks[1]);
+            }
+        })?;
+        match events.next()? {
+            events::IoEvent::Input(key) => {
+                if key == Key::Char('q') {
+                    break;
+                } else {
+                    todo!();
+                }
+            }
+            events::IoEvent::Tick => {
+                app_state.update_on_tick();
+            }
+        }
+    }
+    //restore terminal
     exit()?;
     Ok(())
 }
