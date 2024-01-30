@@ -5,21 +5,20 @@ use crate::{
     App,
 };
 use anyhow::Result;
+use color_eyre::owo_colors::OwoColorize;
 use crossterm::{
     event::DisableMouseCapture,
     execute,
+    style::Colors,
     terminal::{disable_raw_mode, enable_raw_mode, LeaveAlternateScreen},
 };
-use std::{io, time::Duration};
-use tui::{
-    backend::CrosstermBackend,
-    layout::{Alignment, Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    symbols,
-    text::{Span, Spans},
-    widgets::{Block, Borders, Gauge, LineGauge, Paragraph, Tabs},
-    Terminal,
+use ratatui::{
+    layout::{Constraint, Direction, Layout},
+    prelude::{CrosstermBackend, Terminal},
+    text::Span,
+    widgets::{Block, Borders, Gauge, Paragraph},
 };
+use std::{io, time::Duration};
 
 use std::sync::{Arc, Mutex};
 
@@ -57,31 +56,8 @@ impl Default for TabsState {
     }
 }
 
-#[allow(clippy::needless_lifetimes)]
-pub fn draw_tabs<'a>(app: &'a App) -> Tabs<'a> {
-    let tabs = app
-        .tabstate
-        .pages
-        .iter()
-        .map(|t| {
-            Spans::from(vec![Span::styled(
-                t,
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::UNDERLINED),
-            )])
-        })
-        .collect();
-    Tabs::new(tabs)
-        .block(Block::default().borders(Borders::ALL).title("Menu"))
-        .select(app.tabstate.index)
-        .style(Style::default().fg(Color::Cyan))
-        .highlight_style(
-            Style::default()
-                .fg(Color::LightGreen)
-                .add_modifier(Modifier::BOLD)
-                .bg(Color::Black),
-        )
+pub fn draw_tabs<'a>(app: &'a App) {
+    todo!()
 }
 
 /// TODO: Draw groups page
@@ -105,22 +81,11 @@ pub fn draw_help() -> Result<(), io::Error> {
 
 /// Draw app title and version
 fn draw_title<'a>() -> Paragraph<'a> {
-    Paragraph::new("Rue")
-        .style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
-        .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::ALL))
+    todo!()
 }
 
-pub fn draw_discovery_screen<'a>(counter: u64) -> Gauge<'a> {
-    Gauge::default()
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Press the link button on your bridge"),
-        )
-        .gauge_style(Style::default().fg(Color::Blue).bg(Color::Black))
-        .ratio(counter as f64 / 100.0)
-        .use_unicode(false)
+pub fn draw_discovery_screen<'a>(counter: u64) {
+    todo!()
 }
 
 pub async fn start_register_user_ui(_app: &Arc<Mutex<App>>) -> Result<()> {
@@ -128,20 +93,16 @@ pub async fn start_register_user_ui(_app: &Arc<Mutex<App>>) -> Result<()> {
 }
 
 fn exit() -> Result<()> {
-    disable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, LeaveAlternateScreen, DisableMouseCapture)?;
+    crossterm::execute!(std::io::stderr(), crossterm::terminal::LeaveAlternateScreen)?;
+    crossterm::terminal::disable_raw_mode()?;
     Ok(())
 }
 
 pub async fn start_ui(app: &Arc<tokio::sync::Mutex<App>>, bridges: Vec<Bridge>) -> Result<()> {
-    let stdout = io::stdout();
-    let backend = CrosstermBackend::new(stdout);
+    crossterm::terminal::enable_raw_mode()?;
+    crossterm::execute!(std::io::stderr(), crossterm::terminal::EnterAlternateScreen)?;
+    let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stderr()))?;
 
-    enable_raw_mode()?;
-    let mut terminal = Terminal::new(backend)?;
-    terminal.clear()?;
-    terminal.hide_cursor()?;
     let mut app_state = app.lock().await;
     let events = events::EventsHandler::new(Duration::from_millis(500));
     let loader_progress = Arc::new(Mutex::new(0));
@@ -153,27 +114,27 @@ pub async fn start_ui(app: &Arc<tokio::sync::Mutex<App>>, bridges: Vec<Bridge>) 
 
     loop {
         let loader_progress = Arc::clone(&loader_progress);
-        let tab_state = app_state.clone();
-        let tabs = draw_tabs(&tab_state);
-        app_state.update_user();
         terminal.draw(|f| {
-            let title = draw_title();
-            let size = f.size();
-            let chunks = Layout::default()
+            let gauge = Gauge::default()
+                .block(Block::default().title("Progress").borders(Borders::ALL))
+                .gauge_style(ratatui::style::Style::default())
+                .ratio(*loader_progress.lock().unwrap() as f64 / 10 as f64);
+            let row4 = Layout::default()
                 .direction(Direction::Vertical)
-                .margin(3)
-                .constraints([Constraint::Length(3), Constraint::Min(0)].as_ref())
-                .split(size);
+                .constraints(
+                    [
+                        Constraint::Length(3),
+                        Constraint::Length(8),
+                        Constraint::Length(0 as u16 + 2),
+                        Constraint::Percentage(40),
+                    ]
+                    .as_ref(),
+                )
+                .split(f.size());
 
-            f.render_widget(title, chunks[0]);
-
-            if app_state.user.is_none() {
-                let progress_bar = draw_discovery_screen(*loader_progress.lock().unwrap());
-                f.render_widget(progress_bar, chunks[1]);
-            } else {
-                f.render_widget(tabs, chunks[1]);
-            }
+            f.render_widget(gauge, row4[0]);
         })?;
+        app_state.update_user();
         match events.next()? {
             events::IoEvent::Input(key) => {
                 if key == Key::Char('q') {
