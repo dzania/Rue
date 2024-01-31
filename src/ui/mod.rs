@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use crate::{
     banner::BANNER,
     bridge::Bridge,
@@ -5,16 +7,12 @@ use crate::{
     App,
 };
 use anyhow::Result;
-use color_eyre::owo_colors::OwoColorize;
-use crossterm::{
-    event::DisableMouseCapture,
-    execute,
-    style::Colors,
-    terminal::{disable_raw_mode, enable_raw_mode, LeaveAlternateScreen},
-};
+use color_eyre::owo_colors::{style, OwoColorize};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode, LeaveAlternateScreen};
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout},
     prelude::{CrosstermBackend, Terminal},
+    style::{Color, Style, Stylize},
     text::Span,
     widgets::{Block, Borders, Gauge, Paragraph},
 };
@@ -79,7 +77,7 @@ pub fn draw_help() -> Result<(), io::Error> {
     todo!()
 }
 
-/// Draw app title and version
+/// TODO: Draw app title and version
 fn draw_title<'a>() -> Paragraph<'a> {
     todo!()
 }
@@ -103,44 +101,58 @@ pub async fn start_ui(app: &Arc<tokio::sync::Mutex<App>>, bridges: Vec<Bridge>) 
     crossterm::execute!(std::io::stderr(), crossterm::terminal::EnterAlternateScreen)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stderr()))?;
 
-    let mut app_state = app.lock().await;
+    let app_state = app.lock().await;
     let events = events::EventsHandler::new(Duration::from_millis(500));
     let loader_progress = Arc::new(Mutex::new(0));
 
     let counter = Arc::clone(&loader_progress);
+    let app_clone = Arc::clone(app);
     if app_state.user.is_none() {
-        tokio::spawn(async move { Bridge::create_user(bridges, counter).await });
-    }
+        tokio::spawn(async move {
+            if let Ok(_) = Bridge::create_user(bridges, counter).await {
+                let mut state = app_clone.lock().await;
+                state.update_user();
+            };
+        });
+    };
 
     loop {
         let loader_progress = Arc::clone(&loader_progress);
         terminal.draw(|f| {
+            // FIXME: move this to a function
             let gauge = Gauge::default()
-                .block(Block::default().title("Progress").borders(Borders::ALL))
-                .gauge_style(ratatui::style::Style::default())
-                .ratio(*loader_progress.lock().unwrap() as f64 / 10 as f64);
-            let row4 = Layout::default()
+                .block(Block::default().borders(Borders::ALL))
+                .gauge_style(ratatui::style::Style::default().bg(Color::Green))
+                .ratio(*loader_progress.lock().unwrap() as f64 / 100 as f64);
+            let banner_text = Paragraph::new(BANNER)
+                .alignment(Alignment::Center)
+                .block(Block::default().borders(Borders::NONE))
+                .style(Style::new().green());
+            let help_text = Paragraph::new(
+                "Please press the link button on your bridge to create new user and activate app",
+            )
+            .alignment(Alignment::Center)
+            .block(Block::default().borders(Borders::NONE));
+            let main_layout = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints(
-                    [
-                        Constraint::Length(3),
-                        Constraint::Length(8),
-                        Constraint::Length(0 as u16 + 2),
-                        Constraint::Percentage(40),
-                    ]
-                    .as_ref(),
-                )
+                .constraints([
+                    Constraint::Length(15),
+                    Constraint::Length(3),
+                    Constraint::Length(5),
+                    Constraint::Length(5),
+                ])
                 .split(f.size());
 
-            f.render_widget(gauge, row4[0]);
+            f.render_widget(banner_text, main_layout[0]);
+            f.render_widget(help_text, main_layout[1]);
+            f.render_widget(gauge, main_layout[2]);
         })?;
-        app_state.update_user();
         match events.next()? {
             events::IoEvent::Input(key) => {
-                if key == Key::Char('q') {
+                if key == Key::Char('q') || key == Key::Ctrl('c') {
                     break;
                 } else {
-                    todo!();
+                    break;
                 }
             }
             events::IoEvent::Tick => {

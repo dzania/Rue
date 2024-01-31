@@ -21,13 +21,13 @@ async fn main() -> Result<()> {
     println!("{}", BANNER);
     println!("Looking for bridges..");
     let bridges = Bridge::discover_bridges().await?;
-    println!(
-        "Found {} bridges do you want to authorize? y/n",
-        &bridges.len()
-    );
-    let mut user_input = String::new();
-    let stdin = io::stdin();
-    stdin.read_line(&mut user_input)?;
+    //println!(
+        //"Found {} bridges do you want to authorize? y/n",
+        //&bridges.len()
+    //);
+    //let mut user_input = String::new();
+    //let stdin = io::stdin();
+    //stdin.read_line(&mut user_input)?;
     ui::start_ui(&app, bridges).await?;
     Ok(())
 }

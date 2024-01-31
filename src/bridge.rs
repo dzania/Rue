@@ -83,7 +83,6 @@ impl Bridge {
                 .buffer_unordered(bridges.len());
 
             // Use channel to because we cant break main loop from this scope
-            // FIXME: Maybe there is better way to do this for now leave it as is
             requests
                 .for_each(|b| async {
                     match b {
@@ -124,7 +123,7 @@ impl Bridge {
         let address = format!("http://{}/api", ip);
         let client = Client::new();
         let mut body = HashMap::new();
-        body.insert("devicetype", "rue_pc_app");
+        body.insert("devicetype", "rue_tui_app");
         let resp = client
             .post(&address)
             .json(&body)
@@ -139,8 +138,6 @@ impl Bridge {
             serde_json::from_str(&data).map_err(|e| BridgeError::InternalError(e.to_string()))?;
 
         // FIXME: Add better response parsing
-        //
-        println!("{:?}", value);
         match value[0].get("success") {
             Some(message) => {
                 let user: HashMap<String, String> = serde_json::from_value(message.to_owned())
