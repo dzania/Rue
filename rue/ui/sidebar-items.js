@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["draw_discovery_screen","draw_groups","draw_help","draw_lights","draw_looking_for_bridge_screen","draw_rooms","draw_tabs","draw_title","exit","spawn_bridge_discovery","start_ui"],"struct":["TabsState"]};
