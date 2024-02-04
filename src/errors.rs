@@ -26,6 +26,10 @@ pub enum BridgeError {
     ResponseError(String),
     #[error("Save user error")]
     SaveUser(String),
+    #[error("Internal error")]
+    InternalError(String),
+    #[error("Mdns error")]
+    MdnsError(String),
 }
 
 impl From<reqwest::Error> for BridgeError {
@@ -33,4 +37,8 @@ impl From<reqwest::Error> for BridgeError {
         BridgeError::RequestError(error.to_string())
     }
 }
-
+impl From<mdns::Error> for BridgeError {
+    fn from(error: mdns::Error) -> Self {
+        BridgeError::RequestError(error.to_string())
+    }
+}

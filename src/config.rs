@@ -3,16 +3,17 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs,
     io::{BufReader, Write},
+    net::IpAddr,
     path::{Path, PathBuf},
 };
 
 const CONFIG_DIR: &str = ".config/rue";
-const CONFIG_NAME: &str = "rue.json";
+const CONFIG_NAME: &str = "rue.conf";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct User {
     pub username: String,
-    pub bridge_address: String,
+    pub bridge_address: IpAddr,
 }
 
 impl User {
