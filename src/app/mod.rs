@@ -1,10 +1,21 @@
+use crate::bridge::Bridge;
 use crate::config::User;
 use crate::ui::TabsState;
+use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Page {
+    Discovery(Vec<Bridge>),
+    Rooms,
+    Lights,
+    Search,
+}
+
+#[derive(Clone, Debug)]
 pub struct App {
     pub user: Option<User>,
     pub tabstate: TabsState,
+    pub active_page: Page,
 }
 
 impl App {
@@ -14,9 +25,16 @@ impl App {
             Err(_) => None,
         };
 
+        let active_page = if user.is_some() {
+            Page::Rooms
+        } else {
+            Page::Search
+        };
+
         App {
             user,
             tabstate: TabsState::new(),
+            active_page,
         }
     }
     // Reload user
@@ -30,7 +48,6 @@ impl App {
     pub fn authorized(&self) -> bool {
         self.user.is_some()
     }
-
     pub fn update_on_tick(&self) {}
 }
 

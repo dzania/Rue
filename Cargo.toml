@@ -16,7 +16,7 @@ dirs = "4.0.0"
 log = "0.4.17"
 
 # Currently downgraded due to https://github.com/dylanmckay/mdns/issues/26
-mdns = "2.0.2"
+mdns = "3.0.0"
 anyhow = "1.0.69"
 thiserror = "1.0.38"
 ratatui = "0.25.0"
@@ -26,3 +26,4 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 directories = "5.0.1"
 lazy_static = "1.4.0"
 color-eyre = "0.6.2"
+log4rs = "1.2.0"

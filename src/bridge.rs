@@ -1,10 +1,8 @@
 use crate::{config::User, errors::BridgeError};
 use futures::{pin_mut, stream, StreamExt};
-//use mdns_sd::{ServiceDaemon, ServiceEvent};
 use mdns::{Record, RecordKind};
 use reqwest::{Client, StatusCode};
 use serde::Deserialize;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::{
     net::IpAddr,
@@ -16,11 +14,22 @@ use tokio::sync::mpsc;
 const MDNS_BRIDGE_SERVICE_NAME: &str = "_hue._tcp.local";
 const DISCOVERY_URL: &str = "https://discovery.meethue.com/";
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Bridge {
     #[serde(rename = "internalipaddress")]
     internal_ip_address: IpAddr,
 }
+
+#[derive(Debug, Deserialize)]
+struct SuccessResponse {
+    success: HashMap<String, String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ErrorResponse {
+    error: HashMap<String, String>,
+}
+
 impl Bridge {
     pub async fn discover_bridges() -> Result<Vec<Self>, BridgeError> {
         match Bridge::mdns_discovery().await {
@@ -41,12 +50,16 @@ impl Bridge {
     }
     /// Find bridges using mdns method
     /// https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/#mDNS
+    // TODO: Remove this code and write our own dns
+    // this is not reliable
     async fn mdns_discovery() -> Result<Vec<Self>, BridgeError> {
+        debug!("entering mdns");
         let stream =
             mdns::discover::all(MDNS_BRIDGE_SERVICE_NAME, Duration::from_secs(5))?.listen();
-        pin_mut!(stream);
         let mut bridges: Vec<Bridge> = vec![];
+        pin_mut!(stream);
         for response in (stream.next().await).into_iter().flatten() {
+            debug!("response: {response:?}");
             let addr = response.records().find_map(Self::to_ip_addr);
             if let Some(addr) = addr {
                 bridges.push(Bridge {
@@ -56,6 +69,7 @@ impl Bridge {
                 return Err(BridgeError::NoBridgesFound);
             }
         }
+        debug!("returning mdns");
         Ok(bridges)
     }
     fn to_ip_addr(record: &Record) -> Option<IpAddr> {
@@ -72,6 +86,7 @@ impl Bridge {
         loader_progress: Arc<Mutex<u64>>,
     ) -> Result<(), BridgeError> {
         // Poll bridge for minute
+        debug!("Creating user");
         for _ in 0..25 {
             let (tx, mut rx) = mpsc::channel(4);
             let requests = stream::iter(bridges.clone())
@@ -110,6 +125,7 @@ impl Bridge {
                     Err(_) => (),
                 }
             };
+            debug!("Incrementing loader");
             let mut loader = loader_progress.lock().unwrap();
             *loader += 4;
 
@@ -134,25 +150,24 @@ impl Bridge {
             .text()
             .await
             .map_err(|e| BridgeError::ResponseError(e.to_string()))?;
-        let value: Value =
-            serde_json::from_str(&data).map_err(|e| BridgeError::InternalError(e.to_string()))?;
 
-        // FIXME: Add better response parsing
-        match value[0].get("success") {
-            Some(message) => {
-                let user: HashMap<String, String> = serde_json::from_value(message.to_owned())
-                    .map_err(|e| BridgeError::InternalError(e.to_string()))?;
-                if let Some(username) = user.get("username") {
-                    let user = User {
-                        username: username.to_owned(),
-                        bridge_address: ip,
-                    };
-                    Ok(user)
-                } else {
-                    Err(BridgeError::ResponseError("Can't decode username".into()))
+        if let Ok(success_response) = serde_json::from_str::<SuccessResponse>(&data) {
+            if let Some(username) = success_response.success.get("username") {
+                debug!("Received reponse: {success_response:?}");
+                let user = User {
+                    username: username.clone(),
+                    bridge_address: ip,
+                };
+                return Ok(user);
+            }
+        } else if let Ok(error_response) = serde_json::from_str::<ErrorResponse>(&data) {
+            if let Some(description) = error_response.error.get("description") {
+                if description == "Link button not pressed" {
+                    debug!("Received reponse: {error_response:?}");
+                    return Err(BridgeError::ButtonNotPressed);
                 }
             }
-            None => Err(BridgeError::ButtonNotPressed),
         }
+        Err(BridgeError::ResponseError("Unknown response format".into()))
     }
 }
