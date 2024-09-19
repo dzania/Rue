@@ -3,7 +3,6 @@ use app::App;
 use log::LevelFilter;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
-use std::fs;
 use std::sync::Arc;
 
 pub mod app;
@@ -25,7 +24,7 @@ async fn main() -> Result<()> {
     let log_file_path = "app.log";
     // Set up logging to file
     let file_appender = FileAppender::builder()
-        .append(false) 
+        .append(false)
         .build(log_file_path)
         .expect("Failed to create file appender.");
 

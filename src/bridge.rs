@@ -1,3 +1,4 @@
+use crate::app::App;
 use crate::{config::User, errors::BridgeError};
 use futures::{pin_mut, stream, StreamExt};
 use mdns::{Record, RecordKind};
@@ -32,6 +33,7 @@ struct ErrorResponse {
 
 impl Bridge {
     pub async fn discover_bridges() -> Result<Vec<Self>, BridgeError> {
+        return Bridge::nupnp_discovery().await;
         match Bridge::mdns_discovery().await {
             Ok(bridges) => Ok(bridges),
             Err(_) => Bridge::nupnp_discovery().await,
@@ -51,7 +53,7 @@ impl Bridge {
     /// Find bridges using mdns method
     /// https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/#mDNS
     // TODO: Remove this code and write our own dns
-    // this is not reliable
+    // this is not reliable as it can hang forever?
     async fn mdns_discovery() -> Result<Vec<Self>, BridgeError> {
         debug!("entering mdns");
         let stream =
@@ -81,57 +83,50 @@ impl Bridge {
     }
 
     // Send parallel requests to all bridges found
-    pub async fn create_user(
-        bridges: Vec<Self>,
-        loader_progress: Arc<Mutex<u64>>,
-    ) -> Result<(), BridgeError> {
+    pub async fn create_user(bridges: Vec<Self>) -> Result<User, BridgeError> {
         // Poll bridge for minute
         debug!("Creating user");
-        for _ in 0..25 {
-            let (tx, mut rx) = mpsc::channel(4);
-            let requests = stream::iter(bridges.clone())
-                .map(|bridge| {
-                    tokio::spawn(async move {
-                        Bridge::authorize_user_request(bridge.internal_ip_address).await
-                    })
+        let (tx, mut rx) = mpsc::channel(bridges.len());
+        let requests = stream::iter(bridges.clone())
+            .map(|bridge| {
+                tokio::spawn(async move {
+                    Bridge::authorize_user_request(bridge.internal_ip_address).await
                 })
-                .buffer_unordered(bridges.len());
+            })
+            .buffer_unordered(bridges.len());
 
-            // Use channel to because we cant break main loop from this scope
-            requests
-                .for_each(|b| async {
-                    match b {
-                        Ok(resp) => {
-                            let _ = tx.send(resp).await;
+        // Use channel to because we cant break main loop from this scope
+        requests
+            .for_each(|result| async {
+                match result {
+                    Ok(resp) => match resp {
+                        Ok(user) => {
+                            debug!("User created: {:?}", user);
+                            let _ = tx.send(Ok(user)).await;
+                        }
+                        Err(BridgeError::ButtonNotPressed) => {
+                            debug!("Button not pressed");
+                            let _ = tx.send(Err(BridgeError::ButtonNotPressed)).await;
                         }
                         Err(e) => {
                             let _ = tx
                                 .send(Err(BridgeError::InternalError(e.to_string())))
                                 .await;
                         }
+                    },
+                    Err(e) => {
+                        let _ = tx
+                            .send(Err(BridgeError::InternalError(e.to_string())))
+                            .await;
                     }
-                })
-                .await;
-
-            if let Some(resp) = rx.recv().await {
-                match resp {
-                    Ok(user) => {
-                        user.save()
-                            .await
-                            .map_err(|e| BridgeError::SaveUser(e.to_string()))?;
-                        break;
-                    }
-                    Err(BridgeError::ButtonNotPressed) => (),
-                    Err(_) => (),
                 }
-            };
-            debug!("Incrementing loader");
-            let mut loader = loader_progress.lock().unwrap();
-            *loader += 4;
-
-            std::thread::sleep(Duration::from_secs(5));
+            })
+            .await;
+        if let Some(resp) = rx.recv().await {
+            resp
+        } else {
+            Err(BridgeError::InternalError("Nothing returned".into()))
         }
-        Ok(())
     }
 
     /// Send request to bridge to get User

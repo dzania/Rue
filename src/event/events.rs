@@ -9,6 +9,7 @@ use std::time::Duration;
 
 /// Main event handler to communicate between
 /// input handler and rendering loop
+#[derive(Debug)]
 pub struct EventsHandler {
     pub rx: Receiver<IoEvent<Key>>,
     pub tx: Sender<IoEvent<Key>>,
@@ -20,10 +21,12 @@ impl EventsHandler {
         let event_tx = tx.clone();
         thread::spawn(move || {
             loop {
+                debug!("Event: {:#?}", event::read().unwrap());
                 // poll for tick rate duration, if no event, sent tick event.
                 if event::poll(tick_rate).unwrap() {
                     if let event::Event::Key(key) = event::read().unwrap() {
                         let key = Key::from(key);
+                        debug!("Key {key:#?}");
 
                         event_tx.send(IoEvent::Input(key)).unwrap();
                     }

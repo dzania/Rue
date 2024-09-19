@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 
 use crate::{
-    app::Page,
+    app::{spawn_discovery_task, Page},
     banner::BANNER,
     bridge::Bridge,
     event::{events, key::Key},
@@ -33,7 +33,6 @@ impl TabsState {
     pub fn new() -> Self {
         TabsState {
             pages: vec!["Rooms".into(), "Lights".into(), "Groups".into()],
-
             index: 0,
         }
     }
@@ -56,61 +55,28 @@ impl Default for TabsState {
     }
 }
 
-fn draw_tabs<'a>(app: &'a App) {
-    todo!()
-}
+// TODO:
+/*fn draw_tabs<'a>(app: &'a App) {*/
+/*todo!()*/
+/*}*/
 
-/// TODO: Draw groups page
-fn draw_groups() -> Result<(), io::Error> {
-    todo!()
-}
+fn draw_discovery_screen<'a>(f: &mut Frame, progress: u32) -> Result<()> {
+    debug!("Progress: {progress:#?}");
 
-/// TODO: Draw lights page
-fn draw_lights() -> Result<(), io::Error> {
-    todo!()
-}
-
-/// TODO: Draw rooms page
-fn draw_rooms() -> Result<(), io::Error> {
-    todo!()
-}
-/// TODO: Draw help page
-fn draw_help() -> Result<(), io::Error> {
-    todo!()
-}
-
-/// TODO: Draw app title and version
-fn draw_title<'a>() -> Paragraph<'a> {
-    todo!()
-}
-
-fn draw_discovery_screen<'a>(
-    f: &mut Frame,
-    app: Arc<tokio::sync::Mutex<App>>,
-    bridges: Vec<Bridge>,
-) -> Result<()> {
-    let loader_progress = Arc::new(Mutex::new(0));
-    let counter = Arc::clone(&loader_progress);
-    tokio::spawn(async move {
-        if let Ok(_) = Bridge::create_user(bridges, counter).await {
-            let mut state = app.lock().await;
-            state.update_user();
-        };
-    });
+    let progress = progress as f64 / 100.0;
 
     let gauge = Gauge::default()
         .block(Block::default().borders(Borders::ALL))
         .gauge_style(ratatui::style::Style::default().bg(Color::Green))
-        .ratio(*loader_progress.lock().unwrap() as f64 / 100 as f64);
+        .ratio(progress);
     let banner_text = Paragraph::new(BANNER)
         .alignment(Alignment::Center)
         .block(Block::default().borders(Borders::NONE))
         .style(Style::new().green());
-    let help_text = Paragraph::new(
-        "Please press the link button on your bridge to create new user and activate app",
-    )
-    .alignment(Alignment::Center)
-    .block(Block::default().borders(Borders::NONE));
+    let help_text =
+        Paragraph::new("Press the link button on your bridge to create new user and activate app")
+            .alignment(Alignment::Center)
+            .block(Block::default().borders(Borders::NONE));
     let main_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -128,7 +94,7 @@ fn draw_discovery_screen<'a>(
 
 pub fn draw_looking_for_bridge_screen<'a>(
     f: &mut Frame<'a>,
-    app: &Arc<tokio::sync::Mutex<App>>,
+    _app: &Arc<tokio::sync::Mutex<App>>,
 ) -> Result<()> {
     let looking_for_bridges_text =
         Span::styled("Looking for bridges...", Style::default().fg(Color::Yellow));
@@ -178,7 +144,7 @@ pub async fn start_ui(app: &Arc<tokio::sync::Mutex<App>>) -> Result<()> {
     crossterm::terminal::enable_raw_mode()?;
     crossterm::execute!(std::io::stderr(), crossterm::terminal::EnterAlternateScreen)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stderr()))?;
-    let events = events::EventsHandler::new(Duration::from_millis(250));
+    let events = events::EventsHandler::new(Duration::from_millis(350));
     {
         let app_state = app.lock().await;
         if app_state.active_page.eq(&Page::Search) {
@@ -192,19 +158,29 @@ pub async fn start_ui(app: &Arc<tokio::sync::Mutex<App>>) -> Result<()> {
         terminal.draw(|f| {
             let _ = match &app_state.active_page {
                 Page::Search => draw_looking_for_bridge_screen(f, app),
-                Page::Discovery(bridges) => draw_discovery_screen(f, app.clone(), bridges.to_vec()),
+                Page::Discovery(bridges) => {
+                    if !app_state.discovery_task_spawned {
+                        debug!("Spawning discovery task");
+                        let _ = spawn_discovery_task(app, bridges.to_owned());
+                    }
+                    draw_discovery_screen(f, app_state.discovery_loader)
+                }
                 _ => Ok(()),
             };
         })?;
+        debug!("{events:#?}");
         match events.next()? {
             events::IoEvent::Input(key) => {
+                debug!("IN MAIN LOOP: {key:#?}");
                 if key == Key::Char('q') || key == Key::Ctrl('c') {
                     break;
                 } else {
                     break;
                 }
             }
-            events::IoEvent::Tick => {}
+            events::IoEvent::Tick => {
+                debug!("Tick event");
+            }
         }
     }
     //restore terminal
