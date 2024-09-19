@@ -33,7 +33,6 @@ struct ErrorResponse {
 
 impl Bridge {
     pub async fn discover_bridges() -> Result<Vec<Self>, BridgeError> {
-        return Bridge::nupnp_discovery().await;
         match Bridge::mdns_discovery().await {
             Ok(bridges) => Ok(bridges),
             Err(_) => Bridge::nupnp_discovery().await,
