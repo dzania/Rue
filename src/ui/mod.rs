@@ -9,6 +9,7 @@ use crate::{
 };
 use anyhow::Result;
 use color_eyre::owo_colors::{style, OwoColorize};
+use core::panicking::panic;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, LeaveAlternateScreen};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
@@ -161,7 +162,9 @@ pub async fn start_ui(app: &Arc<tokio::sync::Mutex<App>>) -> Result<()> {
                 Page::Discovery(bridges) => {
                     if !app_state.discovery_task_spawned {
                         debug!("Spawning discovery task");
-                        let _ = spawn_discovery_task(app, bridges.to_owned());
+                        if let Err(err) = spawn_discovery_task(app, bridges.to_owned()) {
+                            panic!("Error in discovery task: {err}")
+                        }
                     }
                     draw_discovery_screen(f, app_state.discovery_loader)
                 }
@@ -175,7 +178,7 @@ pub async fn start_ui(app: &Arc<tokio::sync::Mutex<App>>) -> Result<()> {
                 if key == Key::Char('q') || key == Key::Ctrl('c') {
                     break;
                 } else {
-                    break;
+                    todo!();
                 }
             }
             events::IoEvent::Tick => {
