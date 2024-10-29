@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["GroupType"],"struct":["Group","GroupAction","GroupState","Light","LightState"]};

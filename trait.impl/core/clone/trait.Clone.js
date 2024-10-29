@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["rue",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.82.0/core/clone/trait.Clone.html\" title=\"trait core::clone::Clone\">Clone</a> for <a class=\"enum\" href=\"rue/app/enum.Page.html\" title=\"enum rue::app::Page\">Page</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.82.0/core/clone/trait.Clone.html\" title=\"trait core::clone::Clone\">Clone</a> for <a class=\"enum\" href=\"rue/event/key/enum.Key.html\" title=\"enum rue::event::key::Key\">Key</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.82.0/core/clone/trait.Clone.html\" title=\"trait core::clone::Clone\">Clone</a> for <a class=\"struct\" href=\"rue/app/struct.App.html\" title=\"struct rue::app::App\">App</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.82.0/core/clone/trait.Clone.html\" title=\"trait core::clone::Clone\">Clone</a> for <a class=\"struct\" href=\"rue/bridge/struct.Bridge.html\" title=\"struct rue::bridge::Bridge\">Bridge</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.82.0/core/clone/trait.Clone.html\" title=\"trait core::clone::Clone\">Clone</a> for <a class=\"struct\" href=\"rue/config/struct.User.html\" title=\"struct rue::config::User\">User</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.82.0/core/clone/trait.Clone.html\" title=\"trait core::clone::Clone\">Clone</a> for <a class=\"struct\" href=\"rue/ui/struct.TabsState.html\" title=\"struct rue::ui::TabsState\">TabsState</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[1487]}
